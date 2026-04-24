@@ -1,0 +1,72 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Ajouter un Trajet - Maya{% endblock %}
+
+{% block body %}
+<h1 class="page-title">Ajouter un Trajet</h1>
+
+<div class="card" style="max-width: 800px;">
+    <div class="card-header">
+        <h3><i class="fas fa-route"></i> Nouveau Trajet</h3>
+    </div>
+    <div class="card-body">
+        <form method="post" action="{{ path('admin_trip_create') }}">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div class="filter-group">
+                    <label>Compagnie *</label>
+                    <select name="company_id" required>
+                        <option value="">Choisir...</option>
+                        {% for company in companies %}
+                            <option value="{{ company.id }}">{{ company.companyName }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Prix (FCFA) *</label>
+                    <input type="number" name="price" required min="0" step="100">
+                </div>
+
+                <div class="filter-group">
+                    <label>Ville de Départ *</label>
+                    <input type="text" name="departure_city" required placeholder="Bamako">
+                </div>
+
+                <div class="filter-group">
+                    <label>Ville d'Arrivée *</label>
+                    <input type="text" name="arrival_city" required placeholder="Ségou">
+                </div>
+
+                <div class="filter-group">
+                    <label>Heure Départ *</label>
+                    <input type="time" name="departure_time" required>
+                </div>
+
+                <div class="filter-group">
+                    <label>Heure Arrivée *</label>
+                    <input type="time" name="arrival_time" required>
+                </div>
+
+                <div class="filter-group">
+                    <label>Durée (ex: 3h30) *</label>
+                    <input type="text" name="duration" required placeholder="3h30">
+                </div>
+
+                <div class="filter-group">
+                    <label>Places Total *</label>
+                    <input type="number" name="total_seats" required min="1" value="45">
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <a href="{{ path('admin_trajets') }}" class="btn btn-danger">
+                    <i class="fas fa-times"></i> Annuler
+                </a>
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-check"></i> Créer le Trajet
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

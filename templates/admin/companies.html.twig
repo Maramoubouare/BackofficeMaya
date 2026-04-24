@@ -1,0 +1,407 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Compagnies - Maya{% endblock %}
+
+{% block body %}
+<h1 class="page-title">Gestion des Compagnies</h1>
+
+{% for msg in app.flashes('success') %}
+    <div style="background:#d4edda;color:#155724;padding:15px 20px;border-radius:8px;margin-bottom:20px;border-left:4px solid #28a745;font-weight:600;">
+        <i class="fas fa-check-circle"></i> {{ msg }}
+    </div>
+{% endfor %}
+
+<div style="display: flex; gap: 12px; margin-bottom: 25px;">
+    <a href="{{ path('admin_company_create') }}" class="btn btn-success">
+        <i class="fas fa-plus"></i> Ajouter Compagnie
+    </a>
+</div>
+
+{# Calculer les totaux #}
+{% set totalTrips = 0 %}
+{% set totalRevenue = 0 %}
+{% set totalCommission = 0 %}
+{% set avgCommissionRate = 0 %}
+{% for comp in companies %}
+    {% set totalTrips = totalTrips + comp.nbTrips %}
+    {% set totalRevenue = totalRevenue + comp.revenue %}
+    {% set totalCommission = totalCommission + (comp.revenue * (comp.commissionRate / 100)) %}
+{% endfor %}
+{% if totalRevenue > 0 %}
+    {% set avgCommissionRate = (totalCommission / totalRevenue) * 100 %}
+{% endif %}
+
+<div class="stats-grid">
+    <div class="stat-card blue">
+        <div class="icon"><i class="fas fa-building"></i></div>
+        <div class="content">
+            <div class="number">{{ companies|length }}</div>
+            <div class="label">Compagnies</div>
+        </div>
+    </div>
+    <div class="stat-card orange">
+        <div class="icon"><i class="fas fa-bus"></i></div>
+        <div class="content">
+            <div class="number">{{ totalTrips }}</div>
+            <div class="label">Trajets</div>
+        </div>
+    </div>
+    <div class="stat-card green">
+        <div class="icon"><i class="fas fa-money-bill-wave"></i></div>
+        <div class="content">
+            <div class="number">{{ (totalRevenue / 1000000)|number_format(1) }}M</div>
+            <div class="label">CA Total</div>
+        </div>
+    </div>
+    <div class="stat-card red">
+        <div class="icon"><i class="fas fa-percentage"></i></div>
+        <div class="content">
+            <div class="number">{{ avgCommissionRate|number_format(1) }}%</div>
+            <div class="label">Commission</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-building"></i> Liste des Compagnies ({{ companies|length }})</h3>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Logo</th>
+                    <th>Nom</th>
+                    <th>Contact</th>
+                    <th>Commission</th>
+                    <th>Trajets</th>
+                    <th>CA</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for company in companies %}
+                <tr>
+                    <td>
+                        <img 
+                            src="https://ui-avatars.com/api/?name={{ company.companyName|url_encode }}&background=14B53A&color=fff" 
+                            style="width: 40px; height: 40px; border-radius: 50%;"
+                            alt="{{ company.companyName }}"
+                        >
+                    </td>
+                    <td><strong>{{ company.companyName }}</strong></td>
+                    <td>
+                        <div>Gérant {{ company.firstName }} {{ company.lastName }}</div>
+                        <small style="color: #7f8c8d;">{{ company.phone }}</small>
+                    </td>
+                    <td><span class="badge warning">{{ company.commissionRate }}%</span></td>
+                    <td><span class="badge info">{{ company.nbTrips }}</span></td>
+                    <td><strong style="color: #14B53A;">{{ company.revenue|number_format(0, '', ' ') }} F</strong></td>
+                    <td>
+    {% if company.isActive %}
+        <span class="badge success">Actif</span>
+    {% else %}
+        <span class="badge danger">Inactif</span>
+    {% endif %}
+</td>
+                    <td>
+                        <div style="display: flex; gap: 6px; flex-wrap:wrap;">
+                            <button
+                                onclick="editCompany({{ company.id }})"
+                                class="btn btn-sm btn-primary"
+                                title="Modifier"
+                            >
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button
+                                onclick="viewTrips({{ company.id }})"
+                                class="btn btn-sm btn-warning"
+                                title="Voir trajets"
+                            >
+                                <i class="fas fa-bus"></i>
+                            </button>
+                            <button
+                                onclick="toggleCompany({{ company.id }})"
+                                class="btn btn-sm btn-danger"
+                                title="Activer/Désactiver"
+                            >
+                                <i class="fas fa-power-off"></i>
+                            </button>
+                            <form method="post" action="{{ path('admin_company_reset_password', {id: company.id}) }}" style="display:inline;"
+                                onsubmit="return confirm('Réinitialiser le mot de passe de {{ company.companyName }} ?')">
+                                <button type="submit" class="btn btn-sm" style="background:#6c757d;color:white;" title="Réinitialiser mot de passe">
+                                    <i class="fas fa-key"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                        <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
+                        Aucune compagnie enregistrée
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# MODAL MODIFICATION #}
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-edit"></i> Modifier la Compagnie</h3>
+            <button onclick="closeModal()" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="editForm">
+                <input type="hidden" id="editCompanyId">
+                
+                <div class="form-group">
+                    <label>Nom de la Compagnie</label>
+                    <input type="text" id="editCompanyName" class="form-control" required>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Prénom Gérant</label>
+                        <input type="text" id="editFirstName" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Nom Gérant</label>
+                        <input type="text" id="editLastName" class="form-control" required>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="editEmail" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Téléphone</label>
+                        <input type="text" id="editPhone" class="form-control" required>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Commission (%)</label>
+                        <input type="number" id="editCommissionRate" class="form-control" step="0.01">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Commission Min (FCFA)</label>
+                        <input type="number" id="editCommissionMin" class="form-control">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeModal()" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Annuler
+            </button>
+            <button onclick="saveEdit()" class="btn btn-success">
+                <i class="fas fa-save"></i> Enregistrer
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block javascripts %}
+<script>
+function editCompany(id) {
+    fetch('/admin/company/' + id + '/data')
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('editCompanyId').value = data.id;
+            document.getElementById('editCompanyName').value = data.companyName;
+            document.getElementById('editFirstName').value = data.firstName;
+            document.getElementById('editLastName').value = data.lastName;
+            document.getElementById('editEmail').value = data.email;
+            document.getElementById('editPhone').value = data.phone;
+            document.getElementById('editCommissionRate').value = data.commissionRate || '2.00';
+            document.getElementById('editCommissionMin').value = data.commissionMin || '300';
+            
+            document.getElementById('editModal').style.display = 'block';
+        })
+        .catch(err => {
+            console.error(err);
+            alert('❌ Erreur lors du chargement des données');
+        });
+}
+
+function saveEdit() {
+    const id = document.getElementById('editCompanyId').value;
+    const data = {
+        company_name: document.getElementById('editCompanyName').value,
+        first_name: document.getElementById('editFirstName').value,
+        last_name: document.getElementById('editLastName').value,
+        email: document.getElementById('editEmail').value,
+        phone: document.getElementById('editPhone').value,
+        commission_rate: document.getElementById('editCommissionRate').value,
+        commission_min: document.getElementById('editCommissionMin').value
+    };
+    
+    fetch('/admin/company/' + id + '/edit', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(result => {
+        if (result.success) {
+            alert('✅ ' + result.message);
+            location.reload();
+        } else {
+            alert('❌ ' + result.message);
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('❌ Erreur lors de la modification');
+    });
+}
+
+function viewTrips(companyId) {
+    window.location.href = '/admin/trajets?company_id=' + companyId;
+}
+
+function toggleCompany(id) {
+    if (!confirm('Voulez-vous changer le statut de cette compagnie ?')) {
+        return;
+    }
+    
+    fetch('/admin/company/' + id + '/toggle', {
+        method: 'POST'
+    })
+    .then(res => res.json())
+    .then(result => {
+        if (result.success) {
+            alert('✅ ' + result.message);
+            location.reload();
+        } else {
+            alert('❌ ' + result.message);
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('❌ Erreur');
+    });
+}
+
+function closeModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('editModal');
+    if (event.target == modal) {
+        closeModal();
+    }
+}
+</script>
+
+<style>
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 3% auto;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 700px;
+    box-shadow: 0 5px 30px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    padding: 20px 25px;
+    background: linear-gradient(135deg, #14B53A, #0e8c2d);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 32px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn:hover {
+    opacity: 0.7;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.modal-footer {
+    padding: 20px 25px;
+    background: #f5f5f5;
+    border-radius: 0 0 10px 10px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #2c3e50;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #14B53A;
+}
+</style>
+{% endblock %}

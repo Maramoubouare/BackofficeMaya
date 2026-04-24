@@ -1,0 +1,272 @@
+{% extends 'base.html.twig' %}
+{% block title %}Statistiques - {{ app.user.companyName }}{% endblock %}
+
+{% block sidebar %}
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <a href="{{ path('company_dashboard') }}" class="sidebar-brand">
+            <div class="logo">🚌</div>
+            <div class="brand-text">
+                <span class="title">{{ app.user.companyName }}</span>
+                <span class="subtitle">Espace Compagnie</span>
+            </div>
+        </a>
+    </div>
+    <div class="sidebar-user">
+        <img src="https://ui-avatars.com/api/?name={{ app.user.companyName|url_encode }}&background=14B53A&color=fff" alt="">
+        <div class="user-info">
+            <div class="name">{{ app.user.firstName }} {{ app.user.lastName }}</div>
+            <div class="role">{{ app.user.companyName }}</div>
+        </div>
+    </div>
+    <ul class="sidebar-menu">
+        <li><a href="{{ path('company_dashboard') }}"><i class="fas fa-home"></i><span>Tableau de Bord</span></a></li>
+        <li><a href="{{ path('company_trips') }}"><i class="fas fa-bus"></i><span>Mes Trajets</span></a></li>
+        <li><a href="{{ path('company_reservations') }}"><i class="fas fa-ticket-alt"></i><span>Mes Réservations</span></a></li>
+        <li><a href="{{ path('company_statistics') }}" class="active"><i class="fas fa-chart-bar"></i><span>Statistiques</span></a></li>
+        <li><a href="{{ path('company_messages') }}"><i class="fas fa-envelope"></i><span>Messagerie</span></a></li>
+        <li><a href="{{ path('company_settings') }}"><i class="fas fa-cog"></i><span>Paramètres</span></a></li>
+        <li><a href="{{ path('company_profile') }}"><i class="fas fa-user-cog"></i><span>Mon Profil</span></a></li>
+    </ul>
+    <div class="sidebar-footer">
+        <a href="{{ path('app_logout') }}" class="btn-logout"><i class="fas fa-sign-out-alt"></i><span>Déconnexion</span></a>
+    </div>
+</aside>
+{% endblock %}
+
+{% block body %}
+<h1 class="page-title">Statistiques & Analyses</h1>
+
+{# FILTRES #}
+<form method="get" id="filterForm">
+    <div class="filters-bar">
+        <div class="filters-row">
+            <div class="filter-group">
+                <label>Trajet :</label>
+                <select name="trip_id" id="tripFilter" onchange="this.form.submit()">
+                    <option value="">Tous mes trajets</option>
+                    {% for trip in all_trips %}
+                        <option value="{{ trip.id }}" {{ trip_id == trip.id ~ '' ? 'selected' : '' }}>
+                            {{ trip.departureCity }} → {{ trip.arrivalCity }} ({{ trip.departureTime|date('H:i') }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Période :</label>
+                <select name="period" id="periodFilter" onchange="clearDatesAndSubmit()">
+                    <option value="day"   {{ period == 'day'   ? 'selected' : '' }}>Par jour (7 derniers jours)</option>
+                    <option value="week"  {{ period == 'week'  ? 'selected' : '' }}>Par semaine (8 dernières semaines)</option>
+                    <option value="month" {{ period == 'month' ? 'selected' : '' }}>Par mois (12 derniers mois)</option>
+                    <option value="year"  {{ period == 'year'  ? 'selected' : '' }}>Par année</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Date début :</label>
+                <input type="date" name="start_date" value="{{ start_date }}" id="startDate">
+            </div>
+
+            <div class="filter-group">
+                <label>Date fin :</label>
+                <input type="date" name="end_date" value="{{ end_date }}" id="endDate">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="align-self:flex-end;">
+                <i class="fas fa-search"></i> Filtrer
+            </button>
+            <button type="button" onclick="resetFilters()" class="btn btn-secondary" style="align-self:flex-end;">
+                <i class="fas fa-redo"></i> Réinitialiser
+            </button>
+        </div>
+    </div>
+</form>
+
+{# STATS CARDS #}
+<div class="stats-grid">
+    <div class="stat-card blue">
+        <div class="icon"><i class="fas fa-chart-line"></i></div>
+        <div class="content">
+            <div class="number">{{ (stats.total_revenue / 1000000)|number_format(2) }}M</div>
+            <div class="label">Revenus <small style="display:block;font-size:11px;margin-top:3px;opacity:.8;">{{ app.user.companyName }}</small></div>
+        </div>
+    </div>
+    <div class="stat-card orange">
+        <div class="icon"><i class="fas fa-money-bill-wave"></i></div>
+        <div class="content">
+            <div class="number">{{ (stats.total_commissions / 1000)|number_format(0) }}K</div>
+            <div class="label">Commissions <small style="display:block;font-size:11px;margin-top:3px;opacity:.8;">FCFA</small></div>
+        </div>
+    </div>
+    <div class="stat-card green">
+        <div class="icon"><i class="fas fa-percentage"></i></div>
+        <div class="content">
+            <div class="number">{{ stats.commission_rate|number_format(1) }}%</div>
+            <div class="label">Taux Moyen <small style="display:block;font-size:11px;margin-top:3px;opacity:.8;">Commission</small></div>
+        </div>
+    </div>
+    <div class="stat-card red">
+        <div class="icon"><i class="fas fa-chart-bar"></i></div>
+        <div class="content">
+            <div class="number">{{ stats.growth > 0 ? '+' : '' }}{{ stats.growth|number_format(1) }}%</div>
+            <div class="label">Croissance <small style="display:block;font-size:11px;margin-top:3px;opacity:.8;">vs période précédente</small></div>
+        </div>
+    </div>
+</div>
+
+{# GRAPHIQUES #}
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:25px;margin-bottom:25px;">
+
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-chart-line"></i> Évolution des Revenus</h3>
+        </div>
+        <div class="card-body">
+            <canvas id="revenueChart" height="100"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-chart-pie"></i> Répartition par Trajet</h3>
+        </div>
+        <div class="card-body">
+            <canvas id="pieChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-chart-bar"></i> Revenus par Période</h3>
+    </div>
+    <div class="card-body">
+        <canvas id="barChart" height="80"></canvas>
+    </div>
+</div>
+
+{# TABLEAU DÉTAILLÉ PAR TRAJET #}
+<div class="card" style="margin-top:25px;">
+    <div class="card-header">
+        <h3><i class="fas fa-table"></i> Détails par Trajet</h3>
+    </div>
+    <div class="card-body" style="padding:0;">
+        <table>
+            <thead>
+                <tr>
+                    <th>TRAJET</th>
+                    <th>RÉSERVATIONS</th>
+                    <th>REVENUS</th>
+                    <th>COMMISSIONS</th>
+                    <th>TAUX</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ts in trip_stats %}
+                <tr>
+                    <td><strong>{{ ts.departureCity }} → {{ ts.arrivalCity }}</strong></td>
+                    <td><span class="badge info">{{ ts.nb }}</span></td>
+                    <td><strong style="color:#14B53A;">{{ ts.revenue|number_format(0, '', ' ') }} F</strong></td>
+                    <td><strong style="color:#e67e22;">{{ ts.commission|number_format(0, '', ' ') }} F</strong></td>
+                    <td><span class="badge warning">{{ ts.revenue > 0 ? ((ts.commission / ts.revenue) * 100)|number_format(1) : 0 }}%</span></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" style="text-align:center;color:#999;padding:30px;">Aucune donnée pour cette période.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const chartData = {{ chart_data|json_encode|raw }};
+
+new Chart(document.getElementById('revenueChart').getContext('2d'), {
+    type: 'line',
+    data: {
+        labels: chartData.labels,
+        datasets: [{
+            label: 'Revenus (FCFA)',
+            data: chartData.revenue,
+            borderColor: '#14B53A',
+            backgroundColor: 'rgba(20,181,58,0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            pointBackgroundColor: '#14B53A'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: { display: true, position: 'top' },
+            tooltip: { callbacks: { label: ctx => 'Revenus: ' + ctx.parsed.y.toLocaleString('fr-FR') + ' FCFA' } }
+        },
+        scales: { y: { beginAtZero: true, ticks: { callback: v => (v/1000000).toFixed(1) + 'M' } } }
+    }
+});
+
+new Chart(document.getElementById('barChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+        labels: chartData.labels,
+        datasets: [
+            { label: 'Revenus',      data: chartData.revenue,      backgroundColor: '#14B53A', borderColor: '#0e8c2d', borderWidth: 1 },
+            { label: 'Commissions',  data: chartData.commissions,  backgroundColor: '#e67e22', borderColor: '#d35400', borderWidth: 1 }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: { legend: { display: true, position: 'top' } },
+        scales: { y: { beginAtZero: true, ticks: { callback: v => (v/1000).toFixed(0) + 'K' } } }
+    }
+});
+
+new Chart(document.getElementById('pieChart').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+        labels: chartData.trip_names,
+        datasets: [{
+            data: chartData.trip_revenues,
+            backgroundColor: ['#14B53A','#3498db','#e67e22','#9b59b6','#e74c3c','#1abc9c','#34495e'],
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: { position: 'bottom', labels: { padding: 15, font: { size: 12 } } },
+            tooltip: { callbacks: { label: ctx => {
+                const total = ctx.dataset.data.reduce((a,b) => a+b, 0);
+                return ctx.label + ': ' + ctx.parsed.toLocaleString('fr-FR') + ' FCFA (' + ((ctx.parsed/total)*100).toFixed(1) + '%)';
+            }}}
+        }
+    }
+});
+
+function clearDatesAndSubmit() {
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    document.getElementById('filterForm').submit();
+}
+
+function resetFilters() {
+    document.getElementById('tripFilter').value = '';
+    document.getElementById('periodFilter').value = 'month';
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    document.getElementById('filterForm').submit();
+}
+</script>
+{% endblock %}

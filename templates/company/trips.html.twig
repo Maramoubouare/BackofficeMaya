@@ -1,0 +1,132 @@
+{% extends 'base.html.twig' %}
+{% block title %}Mes Trajets - {{ app.user.companyName }}{% endblock %}
+
+{% block sidebar %}
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <a href="{{ path('company_dashboard') }}" class="sidebar-brand">
+            <div class="logo">🚌</div>
+            <div class="brand-text">
+                <span class="title">{{ app.user.companyName }}</span>
+                <span class="subtitle">Espace Compagnie</span>
+            </div>
+        </a>
+    </div>
+    <div class="sidebar-user">
+        <img src="https://ui-avatars.com/api/?name={{ app.user.companyName|url_encode }}&background=14B53A&color=fff" alt="">
+        <div class="user-info">
+            <div class="name">{{ app.user.firstName }} {{ app.user.lastName }}</div>
+            <div class="role">{{ app.user.companyName }}</div>
+        </div>
+    </div>
+    <ul class="sidebar-menu">
+        <li><a href="{{ path('company_dashboard') }}" class="{% if app.request.get('_route') == 'company_dashboard' %}active{% endif %}"><i class="fas fa-home"></i><span>Tableau de Bord</span></a></li>
+        <li><a href="{{ path('company_trips') }}" class="{% if 'company_trip' in app.request.get('_route') %}active{% endif %}"><i class="fas fa-bus"></i><span>Mes Trajets</span></a></li>
+        <li><a href="{{ path('company_reservations') }}" class="{% if app.request.get('_route') == 'company_reservations' %}active{% endif %}"><i class="fas fa-ticket-alt"></i><span>Mes Réservations</span></a></li>
+        <li><a href="{{ path('company_statistics') }}" class="{% if app.request.get('_route') == 'company_statistics' %}active{% endif %}"><i class="fas fa-chart-bar"></i><span>Statistiques</span></a></li>
+        <li><a href="{{ path('company_profile') }}" class="{% if app.request.get('_route') == 'company_profile' %}active{% endif %}"><i class="fas fa-user-cog"></i><span>Mon Profil</span></a></li>
+    </ul>
+    <div class="sidebar-footer">
+        <a href="{{ path('app_logout') }}" class="btn-logout"><i class="fas fa-sign-out-alt"></i><span>Déconnexion</span></a>
+    </div>
+</aside>
+{% endblock %}
+
+{% block body %}
+<h1 class="page-title">Mes Trajets</h1>
+
+{% for msg in app.flashes('success') %}
+    <div style="background:#d4edda;color:#155724;padding:15px 20px;border-radius:8px;margin-bottom:20px;border-left:4px solid #28a745;font-weight:600;">
+        <i class="fas fa-check-circle"></i> {{ msg }}
+    </div>
+{% endfor %}
+
+<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+    <div class="stat-card blue">
+        <div class="icon"><i class="fas fa-route"></i></div>
+        <div class="content"><div class="number">{{ trips|length }}</div><div class="label">Total Trajets</div></div>
+    </div>
+    <div class="stat-card green">
+        <div class="icon"><i class="fas fa-check-circle"></i></div>
+        <div class="content"><div class="number">{{ trips|filter(t => t.isActive)|length }}</div><div class="label">Trajets Actifs</div></div>
+    </div>
+    <div class="stat-card red">
+        <div class="icon"><i class="fas fa-pause-circle"></i></div>
+        <div class="content"><div class="number">{{ trips|filter(t => not t.isActive)|length }}</div><div class="label">Trajets Inactifs</div></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-bus"></i> Liste de Mes Trajets ({{ trips|length }})</h3>
+        <a href="{{ path('company_trip_create') }}" class="btn btn-success btn-sm">
+            <i class="fas fa-plus"></i> Ajouter un Trajet
+        </a>
+    </div>
+    <div class="card-body" style="padding:0;">
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Trajet</th>
+                        <th>Horaires</th>
+                        <th>Durée</th>
+                        <th>Prix</th>
+                        <th>Places</th>
+                        <th>Options</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for trip in trips %}
+                    <tr>
+                        <td>
+                            <strong>{{ trip.departureCity }}</strong>
+                            <i class="fas fa-arrow-right" style="color:#14B53A;margin:0 6px;"></i>
+                            <strong>{{ trip.arrivalCity }}</strong>
+                        </td>
+                        <td><i class="fas fa-clock"></i> {{ trip.departureTime|date('H:i') }} - {{ trip.arrivalTime|date('H:i') }}</td>
+                        <td>{{ trip.duration ?: '-' }}</td>
+                        <td><strong>{{ trip.price|number_format(0, ',', ' ') }} F</strong></td>
+                        <td>
+                            <span class="badge badge-primary">{{ trip.availableSeats }} / {{ trip.totalSeats }}</span>
+                        </td>
+                        <td>
+                            <small>
+                                {% if trip.hasAC %}<i class="fas fa-snowflake" style="color:#17a2b8;" title="Climatisé"></i> {% endif %}
+                                {% if trip.hasBreak %}<i class="fas fa-coffee" style="color:#ffc107;" title="Pause - {{ trip.breakLocation }}"></i> {% endif %}
+                                {{ trip.vehicleType }}
+                            </small>
+                        </td>
+                        <td>
+                            {% if trip.isActive %}
+                                <span class="badge badge-success"><i class="fas fa-check"></i> Actif</span>
+                            {% else %}
+                                <span class="badge badge-danger"><i class="fas fa-times"></i> Inactif</span>
+                            {% endif %}
+                        </td>
+                        <td style="white-space:nowrap;">
+                            <a href="{{ path('company_trip_edit', {id: trip.id}) }}" class="btn btn-warning btn-sm">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form method="post" action="{{ path('company_trip_toggle', {id: trip.id}) }}" style="display:inline;">
+                                <button type="submit" class="btn btn-sm {% if trip.isActive %}btn-danger{% else %}btn-success{% endif %}"
+                                    onclick="return confirm('{% if trip.isActive %}Désactiver{% else %}Activer{% endif %} ce trajet ?')">
+                                    <i class="fas fa-{% if trip.isActive %}pause{% else %}play{% endif %}"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="8" style="text-align:center;color:#999;padding:30px;">
+                        <i class="fas fa-bus" style="font-size:2rem;margin-bottom:10px;display:block;"></i>
+                        Aucun trajet créé. <a href="{{ path('company_trip_create') }}">Créer votre premier trajet</a>
+                    </td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

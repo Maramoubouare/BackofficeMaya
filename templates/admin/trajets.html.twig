@@ -1,0 +1,459 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Trajets - Maya{% endblock %}
+
+{% block body %}
+<h1 class="page-title">Horaires & Trajets</h1>
+
+<div style="display: flex; gap: 12px; margin-bottom: 25px;">
+    <button class="btn btn-success" onclick="openCreateModal()">
+        <i class="fas fa-plus"></i> Ajouter Trajet
+    </button>
+</div>
+
+<form method="get">
+    <div class="filters-bar">
+        <div class="filters-row">
+            <div class="filter-group">
+                <label>Recherche :</label>
+                <input type="text" name="search" value="{{ search }}" placeholder="Ville...">
+            </div>
+
+            <div class="filter-group">
+                <label>Compagnie :</label>
+                <select name="company_id">
+                    <option value="">Toutes</option>
+                    {% for company in companies %}
+                        <option value="{{ company.id }}" {% if company_id == company.id %}selected{% endif %}>
+                            {{ company.companyName }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Statut :</label>
+                <select name="is_active">
+                    <option value="">Tous</option>
+                    <option value="1" {{ is_active == '1' ? 'selected' : '' }}>Actifs</option>
+                    <option value="0" {{ is_active == '0' ? 'selected' : '' }}>Inactifs</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="align-self: flex-end;">
+                <i class="fas fa-search"></i> Rechercher
+            </button>
+        </div>
+    </div>
+</form>
+
+<div class="card">
+    <div class="card-header">
+        <h3>
+            <i class="fas fa-route"></i> Liste des Trajets ({{ trips|length }})
+        </h3>
+    </div>
+
+    <div class="card-body" style="padding: 0;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Compagnie</th>
+                    <th>Trajet</th>
+                    <th>Horaires</th>
+                    <th>Places</th>
+                    <th>Prix</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for trip in trips %}
+                    <tr>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <img
+                                    src="https://ui-avatars.com/api/?name={{ trip.company.companyName|url_encode }}&background=14B53A&color=fff"
+                                    style="width: 32px; height: 32px; border-radius: 50%;"
+                                >
+                                <strong>{{ trip.company.companyName }}</strong>
+                            </div>
+                        </td>
+
+                        <td>
+                            {{ trip.departureCity }}
+                            <i class="fas fa-arrow-right" style="color: #14B53A;"></i>
+                            {{ trip.arrivalCity }}
+                        </td>
+
+                        <td>
+                            {{ trip.departureTime|date('H:i') }} - {{ trip.arrivalTime|date('H:i') }}
+                        </td>
+
+                        <td>
+                            <span class="badge info">{{ trip.totalSeats }}</span>
+                        </td>
+
+                        <td>
+                            <strong>{{ trip.price|number_format(0, '', ' ') }} F</strong>
+                        </td>
+
+                        <td>
+                            {% if trip.isActive %}
+                                <span class="badge success">Actif</span>
+                            {% else %}
+                                <span class="badge danger">Inactif</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            <div style="display: flex; gap: 6px;">
+                                <a
+                                    href="{{ path('admin_trip_edit', { id: trip.id }) }}"
+                                    class="btn btn-sm btn-primary"
+                                    title="Modifier"
+                                >
+                                    <i class="fas fa-edit"></i>
+                                </a>
+
+                                <button
+                                    class="btn btn-sm btn-warning"
+                                    onclick="toggleTrip({{ trip.id }})"
+                                    type="button"
+                                    title="Activer/Désactiver"
+                                >
+                                    <i class="fas fa-power-off"></i>
+                                </button>
+
+                                <button
+                                    class="btn btn-sm btn-danger"
+                                    onclick="deleteTrip({{ trip.id }})"
+                                    type="button"
+                                    title="Supprimer"
+                                >
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-inbox" style="font-size: 48px; color: #7f8c8d; margin-bottom: 15px; display: block;"></i>
+                            Aucun trajet trouvé
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL CRÉATION TRAJET -->
+<div id="createModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-plus"></i> Ajouter un Nouveau Trajet</h3>
+            <button onclick="closeCreateModal()" class="close-btn">&times;</button>
+        </div>
+        <form method="post" action="{{ path('admin_trip_create') }}">
+            <div class="modal-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label>Compagnie *</label>
+                        <select name="company_id" required class="form-control">
+                            <option value="">Sélectionner...</option>
+                            {% for company in companies %}
+                                <option value="{{ company.id }}">{{ company.companyName }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Prix (FCFA) *</label>
+                        <input type="number" name="price" required min="0" step="100" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Ville de Départ *</label>
+                        <input type="text" name="departure_city" required class="form-control" list="cities">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Ville d'Arrivée *</label>
+                        <input type="text" name="arrival_city" required class="form-control" list="cities">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Heure Départ *</label>
+                        <input type="time" name="departure_time" required class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Heure Arrivée *</label>
+                        <input type="time" name="arrival_time" required class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Durée *</label>
+                        <input type="text" name="duration" required placeholder="Ex: 6h" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Places Total *</label>
+                        <input type="number" name="total_seats" required min="1" value="50" class="form-control">
+                    </div>
+                </div>
+
+                <!-- JOURS DE LA SEMAINE -->
+                <div class="form-group" style="margin-top: 20px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: 600;">Jours d'opération *</label>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="days[]" value="1" checked> Lundi
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="days[]" value="2" checked> Mardi
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="days[]" value="3" checked> Mercredi
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="days[]" value="4" checked> Jeudi
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="days[]" value="5" checked> Vendredi
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="days[]" value="6" checked> Samedi
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="days[]" value="0" checked> Dimanche
+                        </label>
+                    </div>
+                    <small style="color: #7f8c8d; display: block; margin-top: 8px;">
+                        Sélectionnez les jours où ce trajet sera disponible
+                    </small>
+                </div>
+            </div>
+
+            <datalist id="cities">
+                <option value="Bamako">
+                <option value="Sikasso">
+                <option value="Mopti">
+                <option value="Koutiala">
+                <option value="Kayes">
+                <option value="Ségou">
+                <option value="Gao">
+                <option value="Kidal">
+                <option value="Tombouctou">
+                <option value="San">
+            </datalist>
+
+            <div class="modal-footer">
+                <button type="button" onclick="closeCreateModal()" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Annuler
+                </button>
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-save"></i> Créer le Trajet
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block javascripts %}
+<script>
+function openCreateModal() {
+    document.getElementById('createModal').style.display = 'block';
+}
+
+function closeCreateModal() {
+    document.getElementById('createModal').style.display = 'none';
+}
+
+function toggleTrip(id) {
+    if (!confirm('Voulez-vous changer le statut de ce trajet ?')) {
+        return;
+    }
+    
+    fetch('/admin/trip/' + id + '/toggle', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('✅ ' + result.message);
+            location.reload();
+        } else {
+            alert('❌ ' + result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('❌ Erreur lors du changement de statut');
+    });
+}
+
+function deleteTrip(id) {
+    if (!confirm('Voulez-vous vraiment supprimer ce trajet ?\n\n⚠️ Toutes les réservations liées seront supprimées !')) {
+        return;
+    }
+    
+    fetch('/admin/trip/' + id + '/delete', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('✅ ' + result.message);
+            location.reload();
+        } else {
+            alert('❌ ' + result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('❌ Erreur lors de la suppression');
+    });
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('createModal');
+    if (event.target == modal) {
+        closeCreateModal();
+    }
+}
+</script>
+
+<style>
+.checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 15px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 500;
+}
+
+.checkbox-label:hover {
+    background: #e0e0e0;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"]:checked + span {
+    color: #14B53A;
+    font-weight: 700;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 3% auto;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 800px;
+    box-shadow: 0 5px 30px rgba(0,0,0,0.3);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    padding: 20px 25px;
+    background: linear-gradient(135deg, #14B53A, #0e8c2d);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 32px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn:hover {
+    opacity: 0.7;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.modal-footer {
+    padding: 20px 25px;
+    background: #f5f5f5;
+    border-radius: 0 0 10px 10px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    position: sticky;
+    bottom: 0;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #2c3e50;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #14B53A;
+}
+</style>
+{% endblock %}

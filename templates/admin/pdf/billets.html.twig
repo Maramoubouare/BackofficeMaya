@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Liste des Réservations - Maya</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            margin: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #14B53A;
+            margin-bottom: 10px;
+        }
+        .header-info {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #666;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th {
+            background-color: #14B53A;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-weight: bold;
+        }
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .status-confirmed {
+            color: #14B53A;
+            font-weight: bold;
+        }
+        .status-cancelled {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #999;
+            font-size: 10px;
+        }
+        .totals {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+        .totals div {
+            margin-bottom: 5px;
+        }
+        @media print {
+            button { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <h1>🚌 MAYA - Liste des Réservations</h1>
+    
+    <div class="header-info">
+        {% if date %}
+            <strong>Date de voyage :</strong> {{ date|date('d/m/Y') }}<br>
+        {% endif %}
+        <strong>Généré le :</strong> {{ generated_at|date('d/m/Y à H:i') }}
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>QR</th>
+                <th>N° RÉSA</th>
+                <th>AGENCE</th>
+                <th>TRAJET</th>
+                <th>DATE</th>
+                <th>PASSAGER</th>
+                <th>PLACES</th>
+                <th>MONTANT</th>
+                <th>STATUT</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set totalPlaces = 0 %}
+            {% set totalMontant = 0 %}
+            {% set totalCommission = 0 %}
+            
+            {% for reservation in reservations %}
+                {% set totalPlaces = totalPlaces + reservation.numPassengers %}
+                
+                {% set price = 0 %}
+                {% set commission = 0 %}
+                
+                {% if reservation.totalPrice is defined %}
+                    {% set price = reservation.totalPrice %}
+                {% endif %}
+                
+                {% if reservation.commissionAmount is defined %}
+                    {% set commission = reservation.commissionAmount %}
+                {% endif %}
+                
+                {% set totalMontant = totalMontant + price %}
+                {% set totalCommission = totalCommission + commission %}
+                
+                <tr>
+                    <td style="text-align:center;padding:4px;">
+                        {% if qrCodes[reservation.reservationId] is defined %}
+                            <img src="{{ qrCodes[reservation.reservationId] }}" width="60" height="60" alt="QR {{ reservation.reservationId }}">
+                        {% endif %}
+                    </td>
+                    <td>{{ reservation.reservationId }}</td>
+                    <td>{{ reservation.company.companyName }}</td>
+                    <td>{{ reservation.trip.departureCity }} → {{ reservation.trip.arrivalCity }}</td>
+                    <td>{{ reservation.travelDate|date('d/m/Y') }}</td>
+                    <td>
+                        {{ reservation.passengerFirstName }} {{ reservation.passengerLastName }}<br>
+                        <small>{{ reservation.passengerPhone }}</small>
+                    </td>
+                    <td style="text-align: center;">{{ reservation.numPassengers }}</td>
+                    <td style="text-align: right;">{{ price|number_format(0, ',', ' ') }} FCFA</td>
+                    <td>
+                        {% if reservation.status == 'confirmed' %}
+                            <span class="status-confirmed">CONFIRMÉ</span>
+                        {% else %}
+                            <span class="status-cancelled">ANNULÉ</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px; color: #999;">
+                        Aucune réservation trouvée
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% if reservations|length > 0 %}
+    <div class="totals">
+        <div><strong>Total réservations :</strong> {{ reservations|length }}</div>
+        <div><strong>Total places vendues :</strong> {{ totalPlaces }}</div>
+        <div><strong>Montant total :</strong> {{ totalMontant|number_format(0, ',', ' ') }} FCFA</div>
+        <div><strong>Commission totale :</strong> {{ totalCommission|number_format(0, ',', ' ') }} FCFA</div>
+        <div><strong>CA compagnies :</strong> {{ (totalMontant - totalCommission)|number_format(0, ',', ' ') }} FCFA</div>
+    </div>
+    {% endif %}
+    
+    <div class="footer">
+        Document généré par Maya BilletExpress - {{ 'now'|date('d/m/Y à H:i:s') }}
+    </div>
+    
+    <div style="margin-top: 20px; text-align: center;">
+        <button onclick="window.print()" style="padding: 10px 20px; background: #14B53A; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            <i class="fas fa-print"></i> Imprimer / Sauvegarder en PDF
+        </button>
+    </div>
+</body>
+</html>

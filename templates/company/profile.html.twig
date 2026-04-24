@@ -1,0 +1,148 @@
+{% extends 'base.html.twig' %}
+{% block title %}Mon Profil - {{ app.user.companyName }}{% endblock %}
+
+{% block sidebar %}
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <a href="{{ path('company_dashboard') }}" class="sidebar-brand">
+            <div class="logo">🚌</div>
+            <div class="brand-text">
+                <span class="title">{{ app.user.companyName }}</span>
+                <span class="subtitle">Espace Compagnie</span>
+            </div>
+        </a>
+    </div>
+    <div class="sidebar-user">
+        <img src="https://ui-avatars.com/api/?name={{ app.user.companyName|url_encode }}&background=14B53A&color=fff" alt="">
+        <div class="user-info">
+            <div class="name">{{ app.user.firstName }} {{ app.user.lastName }}</div>
+            <div class="role">{{ app.user.companyName }}</div>
+        </div>
+    </div>
+    <ul class="sidebar-menu">
+        <li><a href="{{ path('company_dashboard') }}"><i class="fas fa-home"></i><span>Tableau de Bord</span></a></li>
+        <li><a href="{{ path('company_trips') }}"><i class="fas fa-bus"></i><span>Mes Trajets</span></a></li>
+        <li><a href="{{ path('company_reservations') }}"><i class="fas fa-ticket-alt"></i><span>Mes Réservations</span></a></li>
+        <li><a href="{{ path('company_statistics') }}"><i class="fas fa-chart-bar"></i><span>Statistiques</span></a></li>
+        <li><a href="{{ path('company_profile') }}" class="active"><i class="fas fa-user-cog"></i><span>Mon Profil</span></a></li>
+    </ul>
+    <div class="sidebar-footer">
+        <a href="{{ path('app_logout') }}" class="btn-logout"><i class="fas fa-sign-out-alt"></i><span>Déconnexion</span></a>
+    </div>
+</aside>
+{% endblock %}
+
+{% block body %}
+<h1 class="page-title">Mon Profil</h1>
+
+{% for msg in app.flashes('success') %}
+    <div style="background:#d4edda;color:#155724;padding:15px 20px;border-radius:8px;margin-bottom:20px;border-left:4px solid #28a745;font-weight:600;">
+        <i class="fas fa-check-circle"></i> {{ msg }}
+    </div>
+{% endfor %}
+{% for msg in app.flashes('error') %}
+    <div style="background:#f8d7da;color:#721c24;padding:15px 20px;border-radius:8px;margin-bottom:20px;border-left:4px solid #dc3545;font-weight:600;">
+        <i class="fas fa-exclamation-circle"></i> {{ msg }}
+    </div>
+{% endfor %}
+
+<div class="grid-2cols">
+    {# Informations du compte #}
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-building"></i> Informations de la Compagnie</h3>
+        </div>
+        <div class="card-body">
+            <div style="text-align:center;margin-bottom:25px;">
+                <img src="https://ui-avatars.com/api/?name={{ app.user.companyName|url_encode }}&background=14B53A&color=fff&size=100"
+                     alt="" style="border-radius:50%;width:100px;height:100px;">
+                <div style="margin-top:12px;">
+                    <strong style="font-size:20px;">{{ app.user.companyName }}</strong>
+                    <div style="color:#666;margin-top:4px;">
+                        <span class="badge badge-success">Compagnie Active</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:14px;">
+                <div style="display:flex;justify-content:space-between;padding:12px;background:#f8f9fa;border-radius:8px;">
+                    <span style="color:#666;"><i class="fas fa-user"></i> Nom</span>
+                    <strong>{{ app.user.firstName }} {{ app.user.lastName }}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:12px;background:#f8f9fa;border-radius:8px;">
+                    <span style="color:#666;"><i class="fas fa-envelope"></i> Email</span>
+                    <strong>{{ app.user.email }}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:12px;background:#f8f9fa;border-radius:8px;">
+                    <span style="color:#666;"><i class="fas fa-phone"></i> Téléphone</span>
+                    <strong>{{ app.user.phone ?: 'Non renseigné' }}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:12px;background:#f8f9fa;border-radius:8px;">
+                    <span style="color:#666;"><i class="fas fa-shield-alt"></i> Rôle</span>
+                    <strong>Compagnie de Transport</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Changer le mot de passe #}
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-lock"></i> Changer le Mot de Passe</h3>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ path('company_change_password') }}">
+                <div class="filter-group" style="margin-bottom:18px;">
+                    <label>Mot de passe actuel *</label>
+                    <input type="password" name="current_password" required placeholder="Votre mot de passe actuel">
+                </div>
+
+                <div class="filter-group" style="margin-bottom:18px;">
+                    <label>Nouveau mot de passe *</label>
+                    <input type="password" name="new_password" required placeholder="Minimum 8 caractères" id="newPwd">
+                </div>
+
+                <div class="filter-group" style="margin-bottom:25px;">
+                    <label>Confirmer le nouveau mot de passe *</label>
+                    <input type="password" name="confirm_password" required placeholder="Répétez le nouveau mot de passe" id="confirmPwd">
+                    <small id="pwdMatch" style="display:none;margin-top:6px;font-weight:600;"></small>
+                </div>
+
+                <button type="submit" class="btn btn-success" style="width:100%;">
+                    <i class="fas fa-save"></i> Enregistrer le nouveau mot de passe
+                </button>
+            </form>
+
+            <div style="margin-top:20px;padding:15px;background:#fff3cd;border-radius:8px;border-left:4px solid #ffc107;">
+                <i class="fas fa-info-circle" style="color:#856404;"></i>
+                <small style="color:#856404;">
+                    Votre mot de passe doit contenir au moins 8 caractères. Après le changement, vous devrez vous reconnecter.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+const newPwd     = document.getElementById('newPwd');
+const confirmPwd = document.getElementById('confirmPwd');
+const pwdMatch   = document.getElementById('pwdMatch');
+
+function checkMatch() {
+    if (!confirmPwd.value) { pwdMatch.style.display = 'none'; return; }
+    if (newPwd.value === confirmPwd.value) {
+        pwdMatch.textContent = '✓ Les mots de passe correspondent';
+        pwdMatch.style.color = '#155724';
+    } else {
+        pwdMatch.textContent = '✗ Les mots de passe ne correspondent pas';
+        pwdMatch.style.color = '#721c24';
+    }
+    pwdMatch.style.display = 'block';
+}
+
+newPwd.addEventListener('input', checkMatch);
+confirmPwd.addEventListener('input', checkMatch);
+</script>
+{% endblock %}

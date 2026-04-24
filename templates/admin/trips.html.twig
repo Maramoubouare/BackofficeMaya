@@ -1,0 +1,262 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Trajets - MAYA Admin{% endblock %}
+
+{% block body %}
+<nav class="main-header navbar navbar-expand navbar-white navbar-light">
+    <ul class="navbar-nav">
+        <li class="nav-item">
+            <a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a>
+        </li>
+    </ul>
+    <ul class="navbar-nav ml-auto">
+        <li class="nav-item">
+            <a class="nav-link" href="{{ path('app_logout') }}">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </a>
+        </li>
+    </ul>
+</nav>
+
+<aside class="main-sidebar sidebar-dark-primary elevation-4">
+    <a href="{{ path('admin_dashboard') }}" class="brand-link">
+        <i class="fas fa-bus brand-image"></i>
+        <span class="brand-text font-weight-light">MAYA ADMIN</span>
+    </a>
+    <div class="sidebar">
+        <nav class="mt-2">
+            <ul class="nav nav-pills nav-sidebar flex-column">
+                <li class="nav-item">
+                    <a href="{{ path('admin_dashboard') }}" class="nav-link">
+                        <i class="nav-icon fas fa-tachometer-alt"></i>
+                        <p>Dashboard</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ path('admin_companies') }}" class="nav-link">
+                        <i class="nav-icon fas fa-building"></i>
+                        <p>Compagnies</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ path('admin_trips') }}" class="nav-link active">
+                        <i class="nav-icon fas fa-route"></i>
+                        <p>Trajets</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ path('admin_reservations') }}" class="nav-link">
+                        <i class="nav-icon fas fa-ticket-alt"></i>
+                        <p>Réservations</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ path('admin_commissions') }}" class="nav-link">
+                        <i class="nav-icon fas fa-money-bill-wave"></i>
+                        <p>Commissions</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ path('admin_statistics') }}" class="nav-link">
+                        <i class="nav-icon fas fa-chart-bar"></i>
+                        <p>Statistiques</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ path('admin_users') }}" class="nav-link">
+                        <i class="nav-icon fas fa-users"></i>
+                        <p>Utilisateurs</p>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</aside>
+
+<div class="content-wrapper">
+    <div class="content-header">
+        <div class="container-fluid">
+            <h1 class="m-0"><i class="fas fa-route"></i> Tous les Trajets</h1>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <!-- Statistiques -->
+            <div class="row">
+                <div class="col-lg-3">
+                    <div class="small-box bg-success">
+                        <div class="inner">
+                            <h3>{{ trips|length }}</h3>
+                            <p>Total Trajets</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-route"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <div class="small-box bg-info">
+                        <div class="inner">
+                            <h3>{{ trips|filter(t => t.isActive)|length }}</h3>
+                            <p>Actifs</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-check-circle"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <div class="small-box bg-warning">
+                        <div class="inner">
+                            <h3>{{ trips|filter(t => not t.isActive)|length }}</h3>
+                            <p>Inactifs</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-pause-circle"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <div class="small-box bg-danger">
+                        <div class="inner">
+                            {% set totalSeats = 0 %}
+                            {% for trip in trips %}
+                                {% set totalSeats = totalSeats + trip.totalSeats %}
+                            {% endfor %}
+                            <h3>{{ totalSeats }}</h3>
+                            <p>Places Totales</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-chair"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table des trajets -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-list"></i> Liste des Trajets ({{ trips|length }})
+                    </h3>
+                    <div class="card-tools">
+                        <input type="text" id="searchTrips" class="form-control" placeholder="Rechercher..." style="width: 200px;">
+                    </div>
+                </div>
+                <div class="card-body table-responsive p-0">
+                    <table class="table table-hover text-nowrap" id="tripsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Compagnie</th>
+                                <th>Trajet</th>
+                                <th>Horaires</th>
+                                <th>Durée</th>
+                                <th>Prix</th>
+                                <th>Places</th>
+                                <th>Jours</th>
+                                <th>Options</th>
+                                <th>Statut</th>
+                                <th>Créé le</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for trip in trips %}
+                            <tr>
+                                <td>{{ trip.id }}</td>
+                                <td>
+                                    <span class="badge badge-info">{{ trip.company.companyName }}</span>
+                                </td>
+                                <td>
+                                    <strong>{{ trip.departureCity }}</strong>
+                                    <i class="fas fa-arrow-right text-success mx-1"></i>
+                                    <strong>{{ trip.arrivalCity }}</strong>
+                                </td>
+                                <td>
+                                    <i class="fas fa-clock"></i> {{ trip.departureTime|date('H:i') }} - {{ trip.arrivalTime|date('H:i') }}
+                                </td>
+                                <td>
+                                    {% if trip.duration %}
+                                        {{ trip.duration }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ trip.price|number_format(0, ',', ' ') }} FCFA</strong>
+                                </td>
+                                <td>
+                                    <span class="badge badge-primary">
+                                        {{ trip.availableSeats }} / {{ trip.totalSeats }}
+                                    </span>
+                                    <div class="progress" style="height: 5px; width: 60px;">
+                                        {% set occupancy = ((trip.totalSeats - trip.availableSeats) / trip.totalSeats * 100)|round %}
+                                        <div class="progress-bar bg-success" style="width: {{ occupancy }}%"></div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <small>
+                                        {% for day in trip.daysOfWeek %}
+                                            {% if day == 1 %}L{% endif %}
+                                            {% if day == 2 %}M{% endif %}
+                                            {% if day == 3 %}M{% endif %}
+                                            {% if day == 4 %}J{% endif %}
+                                            {% if day == 5 %}V{% endif %}
+                                            {% if day == 6 %}S{% endif %}
+                                            {% if day == 7 %}D{% endif %}
+                                        {% endfor %}
+                                    </small>
+                                </td>
+                                <td>
+                                    <small>
+                                        {% if trip.hasAC %}<i class="fas fa-snowflake text-info" title="Climatisé"></i>{% endif %}
+                                        {% if trip.hasBreak %}<i class="fas fa-coffee text-warning" title="Pause"></i>{% endif %}
+                                        {{ trip.vehicleType }}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if trip.isActive %}
+                                        <span class="badge badge-success">
+                                            <i class="fas fa-check"></i> Actif
+                                        </span>
+                                    {% else %}
+                                        <span class="badge badge-danger">
+                                            <i class="fas fa-times"></i> Inactif
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ trip.createdAt|date('d/m/Y') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="11" class="text-center">
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle"></i> Aucun trajet enregistré.
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<footer class="main-footer">
+    <strong>Copyright &copy; 2025 MAYA Transport.</strong> Tous droits réservés.
+</footer>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+document.getElementById('searchTrips').addEventListener('keyup', function() {
+    const filter = this.value.toUpperCase();
+    const table = document.getElementById('tripsTable');
+    const tr = table.getElementsByTagName('tr');
+    
+    for (let i = 1; i < tr.length; i++) {
+        let txtValue = tr[i].textContent || tr[i].innerText;
+        if (txtValue.toUpperCase().indexOf(filter) > -1) {
+            tr[i].style.display = '';
+        } else {
+            tr[i].style.display = 'none';
+        }
+    }
+});
+</script>
+{% endblock %}

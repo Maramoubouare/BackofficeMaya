@@ -1,0 +1,359 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Statistiques - Maya{% endblock %}
+
+{% block body %}
+<h1 class="page-title">Statistiques & Analyses</h1>
+
+{# FILTRES #}
+<form method="get" id="filterForm">
+    <div class="filters-bar">
+        <div class="filters-row">
+            <div class="filter-group">
+                <label>Compagnie :</label>
+                <select name="company_id" id="companyFilter" onchange="this.form.submit()">
+                    <option value="">Toutes les compagnies</option>
+                    {% for company in companies %}
+                        <option value="{{ company.id }}" {{ company_id == company.id ? 'selected' : '' }}>
+                            {{ company.companyName }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Trajet :</label>
+                <select name="trip_id" id="tripFilter" onchange="this.form.submit()">
+                    <option value="">Tous les trajets</option>
+                    {% for trip in all_trips %}
+                        <option value="{{ trip.id }}" {{ trip_id == trip.id ~ '' ? 'selected' : '' }}>
+                            {{ trip.departureCity }} → {{ trip.arrivalCity }} ({{ trip.departureTime|date('H:i') }}){% if trip.company %} — {{ trip.company.companyName }}{% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Période :</label>
+                <select name="period" id="periodFilter" onchange="this.form.submit()">
+                    <option value="day" {{ period == 'day' ? 'selected' : '' }}>Par jour (7 derniers jours)</option>
+                    <option value="week" {{ period == 'week' ? 'selected' : '' }}>Par semaine (8 dernières semaines)</option>
+                    <option value="month" {{ period == 'month' ? 'selected' : '' }}>Par mois (12 derniers mois)</option>
+                    <option value="year" {{ period == 'year' ? 'selected' : '' }}>Par année</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Date début :</label>
+                <input type="date" name="start_date" value="{{ start_date }}" id="startDate">
+            </div>
+
+            <div class="filter-group">
+                <label>Date fin :</label>
+                <input type="date" name="end_date" value="{{ end_date }}" id="endDate">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="align-self: flex-end;">
+                <i class="fas fa-search"></i> Filtrer
+            </button>
+
+            <button type="button" onclick="resetFilters()" class="btn btn-secondary" style="align-self: flex-end;">
+                <i class="fas fa-redo"></i> Réinitialiser
+            </button>
+        </div>
+    </div>
+</form>
+
+{# STATS CARDS #}
+<div class="stats-grid">
+    <div class="stat-card blue">
+        <div class="icon"><i class="fas fa-chart-line"></i></div>
+        <div class="content">
+            <div class="number">{{ (stats.total_revenue / 1000000)|number_format(2) }}M</div>
+            <div class="label">
+                Revenus 
+                {% if selected_company %}
+                    <small style="display: block; font-size: 11px; margin-top: 3px; opacity: 0.8;">{{ selected_company.companyName }}</small>
+                {% else %}
+                    <small style="display: block; font-size: 11px; margin-top: 3px; opacity: 0.8;">Toutes compagnies</small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="stat-card orange">
+        <div class="icon"><i class="fas fa-money-bill-wave"></i></div>
+        <div class="content">
+            <div class="number">{{ (stats.total_commissions / 1000)|number_format(0) }}K</div>
+            <div class="label">
+                Commissions
+                {% if selected_company %}
+                    <small style="display: block; font-size: 11px; margin-top: 3px; opacity: 0.8;">{{ selected_company.companyName }}</small>
+                {% else %}
+                    <small style="display: block; font-size: 11px; margin-top: 3px; opacity: 0.8;">Toutes compagnies</small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="stat-card green">
+        <div class="icon"><i class="fas fa-percentage"></i></div>
+        <div class="content">
+            <div class="number">{{ stats.commission_rate|number_format(1) }}%</div>
+            <div class="label">
+                Taux Moyen
+                {% if selected_company %}
+                    <small style="display: block; font-size: 11px; margin-top: 3px; opacity: 0.8;">{{ selected_company.companyName }}</small>
+                {% else %}
+                    <small style="display: block; font-size: 11px; margin-top: 3px; opacity: 0.8;">Toutes compagnies</small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="stat-card red">
+        <div class="icon"><i class="fas fa-chart-bar"></i></div>
+        <div class="content">
+            <div class="number">{{ stats.growth > 0 ? '+' : '' }}{{ stats.growth|number_format(1) }}%</div>
+            <div class="label">
+                Croissance
+                {% if selected_company %}
+                    <small style="display: block; font-size: 11px; margin-top: 3px; opacity: 0.8;">vs période précédente</small>
+                {% else %}
+                    <small style="display: block; font-size: 11px; margin-top: 3px; opacity: 0.8;">vs période précédente</small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{# GRAPHIQUES #}
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 25px; margin-bottom: 25px;">
+    
+    {# COURBE DE CROISSANCE #}
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-chart-line"></i> Évolution des Revenus</h3>
+        </div>
+        <div class="card-body">
+            <canvas id="revenueChart" height="100"></canvas>
+        </div>
+    </div>
+
+    {# CAMEMBERT RÉPARTITION #}
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-chart-pie"></i> Répartition par Compagnie</h3>
+        </div>
+        <div class="card-body">
+            <canvas id="pieChart"></canvas>
+        </div>
+    </div>
+</div>
+
+{# HISTOGRAMME #}
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-chart-bar"></i> Revenus par Période</h3>
+    </div>
+    <div class="card-body">
+        <canvas id="barChart" height="80"></canvas>
+    </div>
+</div>
+
+{# TABLEAU DÉTAILLÉ #}
+<div class="card" style="margin-top: 25px;">
+    <div class="card-header">
+        <h3><i class="fas fa-table"></i> Détails par Compagnie</h3>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <table>
+            <thead>
+                <tr>
+                    <th>COMPAGNIE</th>
+                    <th>RÉSERVATIONS</th>
+                    <th>REVENUS</th>
+                    <th>COMMISSIONS</th>
+                    <th>TAUX</th>
+                    <th>CROISSANCE</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for company_stat in company_stats %}
+                <tr>
+                    <td><strong>{{ company_stat.name }}</strong></td>
+                    <td><span class="badge info">{{ company_stat.reservations }}</span></td>
+                    <td><strong style="color: #14B53A;">{{ company_stat.revenue|number_format(0, '', ' ') }} F</strong></td>
+                    <td><strong style="color: #e67e22;">{{ company_stat.commission|number_format(0, '', ' ') }} F</strong></td>
+                    <td><span class="badge warning">{{ company_stat.rate|number_format(1) }}%</span></td>
+                    <td>
+                        {% if company_stat.growth > 0 %}
+                            <span style="color: #27ae60;">▲ {{ company_stat.growth|number_format(1) }}%</span>
+                        {% elseif company_stat.growth < 0 %}
+                            <span style="color: #e74c3c;">▼ {{ company_stat.growth|number_format(1) }}%</span>
+                        {% else %}
+                            <span style="color: #95a5a6;">- 0%</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// DONNÉES DEPUIS PHP
+const chartData = {{ chart_data|json_encode|raw }};
+
+// COURBE DE CROISSANCE
+const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+new Chart(revenueCtx, {
+    type: 'line',
+    data: {
+        labels: chartData.labels,
+        datasets: [{
+            label: 'Revenus (FCFA)',
+            data: chartData.revenue,
+            borderColor: '#14B53A',
+            backgroundColor: 'rgba(20, 181, 58, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            pointBackgroundColor: '#14B53A'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return 'Revenus: ' + context.parsed.y.toLocaleString('fr-FR') + ' FCFA';
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return (value / 1000000).toFixed(1) + 'M';
+                    }
+                }
+            }
+        }
+    }
+});
+
+// HISTOGRAMME
+const barCtx = document.getElementById('barChart').getContext('2d');
+new Chart(barCtx, {
+    type: 'bar',
+    data: {
+        labels: chartData.labels,
+        datasets: [{
+            label: 'Revenus',
+            data: chartData.revenue,
+            backgroundColor: '#14B53A',
+            borderColor: '#0e8c2d',
+            borderWidth: 1
+        }, {
+            label: 'Commissions',
+            data: chartData.commissions,
+            backgroundColor: '#e67e22',
+            borderColor: '#d35400',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return (value / 1000).toFixed(0) + 'K';
+                    }
+                }
+            }
+        }
+    }
+});
+
+// CAMEMBERT
+const pieCtx = document.getElementById('pieChart').getContext('2d');
+new Chart(pieCtx, {
+    type: 'doughnut',
+    data: {
+        labels: chartData.company_names,
+        datasets: [{
+            data: chartData.company_revenues,
+            backgroundColor: [
+                '#14B53A',
+                '#3498db',
+                '#e67e22',
+                '#9b59b6',
+                '#e74c3c',
+                '#1abc9c',
+                '#34495e'
+            ],
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    padding: 15,
+                    font: {
+                        size: 12
+                    }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.parsed || 0;
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return label + ': ' + value.toLocaleString('fr-FR') + ' FCFA (' + percentage + '%)';
+                    }
+                }
+            }
+        }
+    }
+});
+
+// RÉINITIALISER FILTRES
+function resetFilters() {
+    document.getElementById('companyFilter').value = '';
+    document.getElementById('tripFilter').value = '';
+    document.getElementById('periodFilter').value = 'month';
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    document.getElementById('filterForm').submit();
+}
+</script>
+{% endblock %}

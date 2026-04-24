@@ -1,0 +1,32 @@
+// assets/styles/app.scss
+
+// Variables MAYA
+$maya-green: #14B53A;
+$maya-yellow: #FCD116;
+$maya-red: #CE1126;
+$maya-dark: #2C3E50;
+
+// Import Bootstrap
+@import "~bootstrap/scss/bootstrap";
+
+// Import Font Awesome
+@import "~@fortawesome/fontawesome-free/scss/fontawesome";
+@import "~@fortawesome/fontawesome-free/scss/solid";
+@import "~@fortawesome/fontawesome-free/scss/regular";
+@import "~@fortawesome/fontawesome-free/scss/brands";
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f4f6f9;
+}
+
+.btn-maya-primary {
+    background-color: $maya-green;
+    border-color: $maya-green;
+    color: white;
+    
+    &:hover {
+        background-color: darken($maya-green, 10%);
+        border-color: darken($maya-green, 10%);
+    }
+}

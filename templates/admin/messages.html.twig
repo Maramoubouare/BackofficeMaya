@@ -1,0 +1,419 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Messagerie - Maya{% endblock %}
+
+{% block body %}
+<h1 class="page-title">Messagerie</h1>
+
+<div style="display: flex; gap: 12px; margin-bottom: 25px;">
+    <button onclick="openNewMessageModal()" class="btn btn-success">
+        <i class="fas fa-envelope"></i> Nouveau Message
+    </button>
+    <span class="badge danger" style="padding: 8px 15px; font-size: 14px;">
+        {{ unread_count }} NON LUS
+    </span>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
+    
+    {# MESSAGES REÇUS #}
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-inbox"></i> Reçus ({{ received|length }})</h3>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>DE</th>
+                        <th>SUJET</th>
+                        <th>DATE</th>
+                        <th>STATUT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for message in received %}
+                    <tr style="cursor: pointer; {{ message.isRead ? '' : 'background-color: #e8f5e9;' }}" 
+                        onclick="viewMessage({{ message.id }}, 'received')">
+                        <td>
+                            <strong>{{ message.sender.firstName }} {{ message.sender.lastName }}</strong>
+                            <br>
+                            <small style="color: #7f8c8d;">
+                                {% if message.sender.companyName %}
+                                    {{ message.sender.companyName }}
+                                {% else %}
+                                    Service Client
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td>
+                            <strong style="{{ message.isRead ? '' : 'color: #14B53A;' }}">
+                                {{ message.subject }}
+                            </strong>
+                        </td>
+                        <td>{{ message.createdAt|date('d/m/Y H:i') }}</td>
+                        <td>
+                            {% if message.isRead %}
+                                <span class="badge secondary">Lu</span>
+                            {% else %}
+                                <span class="badge success">Nouveau</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                            <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
+                            Aucun message reçu
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {# MESSAGES ENVOYÉS #}
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-paper-plane"></i> Envoyés ({{ sent|length }})</h3>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>À</th>
+                        <th>SUJET</th>
+                        <th>DATE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for message in sent %}
+                    <tr style="cursor: pointer;" onclick="viewMessage({{ message.id }}, 'sent')">
+                        <td>
+                            <strong>{{ message.receiver.firstName }} {{ message.receiver.lastName }}</strong>
+                            <br>
+                            <small style="color: #7f8c8d;">
+                                {% if message.receiver.companyName %}
+                                    {{ message.receiver.companyName }}
+                                {% else %}
+                                    Service Client
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td><strong>{{ message.subject }}</strong></td>
+                        <td>{{ message.createdAt|date('d/m/Y H:i') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                            <i class="fas fa-paper-plane" style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
+                            Aucun message envoyé
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{# MODAL NOUVEAU MESSAGE #}
+<div id="newMessageModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-envelope"></i> Nouveau Message</h3>
+            <button onclick="closeNewMessageModal()" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="newMessageForm">
+                <div class="form-group">
+                    <label>Destinataire *</label>
+                    <select id="receiverId" class="form-control" required>
+                        <option value="">-- Sélectionner un destinataire --</option>
+                        {% for user in all_users %}
+                            {% if user.id != app.user.id %}
+                                <option value="{{ user.id }}">
+                                    {{ user.firstName }} {{ user.lastName }}
+                                    {% if user.companyName %}
+                                        ({{ user.companyName }})
+                                    {% elseif 'ROLE_ADMIN' in user.roles %}
+                                        (Administrateur)
+                                    {% else %}
+                                        (Service Client)
+                                    {% endif %}
+                                </option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Sujet *</label>
+                    <input type="text" id="messageSubject" class="form-control" required 
+                           placeholder="Objet du message">
+                </div>
+                
+                <div class="form-group">
+                    <label>Message *</label>
+                    <textarea id="messageContent" class="form-control" rows="8" required
+                              placeholder="Écrivez votre message ici..."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeNewMessageModal()" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Annuler
+            </button>
+            <button onclick="sendMessage()" class="btn btn-success">
+                <i class="fas fa-paper-plane"></i> Envoyer
+            </button>
+        </div>
+    </div>
+</div>
+
+{# MODAL LECTURE MESSAGE #}
+<div id="viewMessageModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-envelope-open"></i> Message</h3>
+            <button onclick="closeViewMessageModal()" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="messageDetails">
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <div style="margin-bottom: 10px;">
+                        <strong>De :</strong> <span id="msgFrom"></span>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <strong>Sujet :</strong> <span id="msgSubject"></span>
+                    </div>
+                    <div>
+                        <strong>Date :</strong> <span id="msgDate"></span>
+                    </div>
+                </div>
+                
+                <div style="padding: 20px; background: white; border: 1px solid #e0e0e0; border-radius: 8px; min-height: 200px;">
+                    <p id="msgContent" style="white-space: pre-wrap;"></p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeViewMessageModal()" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Fermer
+            </button>
+            <button onclick="replyToMessage()" class="btn btn-primary" id="replyBtn">
+                <i class="fas fa-reply"></i> Répondre
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block javascripts %}
+<script>
+let currentMessageId = null;
+let currentMessageType = null;
+
+// NOUVEAU MESSAGE
+function openNewMessageModal() {
+    document.getElementById('newMessageModal').style.display = 'block';
+}
+
+function closeNewMessageModal() {
+    document.getElementById('newMessageModal').style.display = 'none';
+    document.getElementById('newMessageForm').reset();
+}
+
+function sendMessage() {
+    const data = {
+        receiver_id: document.getElementById('receiverId').value,
+        subject: document.getElementById('messageSubject').value,
+        content: document.getElementById('messageContent').value
+    };
+    
+    if (!data.receiver_id || !data.subject || !data.content) {
+        alert('❌ Veuillez remplir tous les champs');
+        return;
+    }
+    
+    fetch('/admin/message/send', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(result => {
+        if (result.success) {
+            alert('✅ ' + result.message);
+            location.reload();
+        } else {
+            alert('❌ ' + result.message);
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('❌ Erreur lors de l\'envoi');
+    });
+}
+
+// VOIR MESSAGE
+function viewMessage(id, type) {
+    currentMessageId = id;
+    currentMessageType = type;
+    
+    fetch('/admin/message/' + id + '/view')
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('msgFrom').textContent = data.from;
+            document.getElementById('msgSubject').textContent = data.subject;
+            document.getElementById('msgDate').textContent = data.date;
+            document.getElementById('msgContent').textContent = data.content;
+            
+            // Masquer bouton répondre si message envoyé
+            document.getElementById('replyBtn').style.display = type === 'sent' ? 'none' : 'inline-block';
+            
+            document.getElementById('viewMessageModal').style.display = 'block';
+            
+            // Recharger pour mettre à jour le badge
+            if (type === 'received' && !data.isRead) {
+                setTimeout(() => location.reload(), 2000);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('❌ Erreur lors du chargement');
+        });
+}
+
+function closeViewMessageModal() {
+    document.getElementById('viewMessageModal').style.display = 'none';
+}
+
+function replyToMessage() {
+    // Récupérer les infos du message actuel
+    fetch('/admin/message/' + currentMessageId + '/reply-info')
+        .then(res => res.json())
+        .then(data => {
+            closeViewMessageModal();
+            openNewMessageModal();
+            
+            // Pré-remplir le formulaire
+            document.getElementById('receiverId').value = data.sender_id;
+            document.getElementById('messageSubject').value = 'Re: ' + data.subject;
+        });
+}
+
+// FERMER MODALS AU CLIC EXTÉRIEUR
+window.onclick = function(event) {
+    const modals = ['newMessageModal', 'viewMessageModal'];
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    });
+}
+</script>
+
+<style>
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 3% auto;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 700px;
+    box-shadow: 0 5px 30px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    padding: 20px 25px;
+    background: linear-gradient(135deg, #14B53A, #0e8c2d);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 32px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn:hover {
+    opacity: 0.7;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.modal-footer {
+    padding: 20px 25px;
+    background: #f5f5f5;
+    border-radius: 0 0 10px 10px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #2c3e50;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #14B53A;
+}
+
+textarea.form-control {
+    resize: vertical;
+    font-family: inherit;
+}
+</style>
+{% endblock %}

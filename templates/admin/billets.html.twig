@@ -1,0 +1,430 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Gestion des Billets - Maya{% endblock %}
+
+{% block body %}
+<h1 class="page-title">Gestion des Billets</h1>
+
+<!-- 3 WIDGETS EN HAUT -->
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 25px;">
+    <!-- WIDGET 1 - BLEU -->
+    <div style="background: linear-gradient(135deg, #3498db, #2980b9); border-radius: 10px; padding: 22px; color: white; box-shadow: 0 5px 20px rgba(52, 152, 219, 0.3);">
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 18px;">
+            <div style="font-size: 42px;"><i class="fas fa-ticket-alt"></i></div>
+            <div>
+                <h3 style="font-size: 17px; margin-bottom: 6px; font-weight: 700;">Résa Créées Aujourd'hui</h3>
+                <p style="font-size: 12px; opacity: 0.95; margin: 0;">Nouvelles réservations du {{ 'now'|date('d/m/Y') }}</p>
+            </div>
+        </div>
+        <div style="background: rgba(255,255,255,0.18); padding: 22px; border-radius: 10px; text-align: center;">
+            <div style="font-size: 52px; font-weight: 800; margin-bottom: 6px; line-height: 1;">{{ stats.tickets_today }}</div>
+        </div>
+    </div>
+
+    <!-- WIDGET 2 - ORANGE -->
+    <div style="background: linear-gradient(135deg, #f39c12, #e67e22); border-radius: 10px; padding: 22px; color: white; box-shadow: 0 5px 20px rgba(243, 156, 18, 0.3);">
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 18px;">
+            <div style="font-size: 42px;"><i class="fas fa-chair"></i></div>
+            <div>
+                <h3 style="font-size: 17px; margin-bottom: 6px; font-weight: 700;">Places Disponibles</h3>
+                <p style="font-size: 12px; opacity: 0.95; margin: 0;">Total places restantes sur tous les trajets</p>
+            </div>
+        </div>
+        <div style="background: rgba(255,255,255,0.18); padding: 22px; border-radius: 10px; text-align: center;">
+            <div style="font-size: 52px; font-weight: 800; margin-bottom: 6px; line-height: 1;">{{ stats.seats_available }}</div>
+        </div>
+    </div>
+
+    <!-- WIDGET 3 - VERT -->
+    <div style="background: linear-gradient(135deg, #14B53A, #0e8c2d); border-radius: 10px; padding: 22px; color: white; box-shadow: 0 5px 20px rgba(20, 181, 58, 0.3);">
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 18px;">
+            <div style="font-size: 42px;"><i class="fas fa-bus"></i></div>
+            <div>
+                <h3 style="font-size: 17px; margin-bottom: 6px; font-weight: 700;">Trajets Complets</h3>
+                <p style="font-size: 12px; opacity: 0.95; margin: 0;">Bus pleins (0 places disponibles)</p>
+            </div>
+        </div>
+        <div style="background: rgba(255,255,255,0.18); padding: 22px; border-radius: 10px; text-align: center;">
+            <div style="font-size: 52px; font-weight: 800; margin-bottom: 6px; line-height: 1;">{{ stats.tickets_completed }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- LISTE BILLETS - PLEINE LARGEUR -->
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-list"></i> Liste des Billets ({{ reservations|length }})</h3>
+    </div>
+    
+    <div class="card-body" style="padding-top: 0;">
+        <!-- FILTRES -->
+        <form method="get" action="{{ path('admin_billets') }}">
+            <div class="filters-row" style="margin-bottom: 20px; margin-top: 20px;">
+                <div class="filter-group">
+                    <label>Trajet :</label>
+                    <select name="trip_id">
+                        <option value="">Tous</option>
+                        {% for trip in trips %}
+                            {% set isSelected = trip_id is defined and trip_id ~ '' == trip.id ~ '' %}
+                            <option value="{{ trip.id }}" {% if isSelected %}selected{% endif %}>
+                                {{ trip.departureCity }} → {{ trip.arrivalCity }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Date :</label>
+                    <input type="date" name="date" value="{{ date }}">
+                </div>
+
+                <div class="filter-group">
+                    <label>Rechercher...</label>
+                    <input type="text" name="search" value="{{ search }}" placeholder="🔍 N° ou nom...">
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="align-self: flex-end;">
+                    <i class="fas fa-search"></i> Appliquer
+                </button>
+            </div>
+        </form>
+
+        <!-- TABLE -->
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>AGENCE</th>
+                        <th>Départ</th>
+                        <th>Arrivée</th>
+                        <th>Date</th>
+                        <th>Passager</th>
+                        <th>Places</th>
+                        <th>Statut</th>
+                        <th>QR</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reservation in reservations %}
+                    <tr>
+                        <td>{{ reservation.reservationId }}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <img src="https://ui-avatars.com/api/?name={{ reservation.company.companyName|url_encode }}&background=14B53A&color=fff" style="width: 28px; height: 28px; border-radius: 50%;">
+                                <strong>{{ reservation.company.companyName }}</strong>
+                            </div>
+                        </td>
+                        <td>{{ reservation.trip.departureCity }}</td>
+                        <td>{{ reservation.trip.arrivalCity }}</td>
+                        <td>{{ reservation.travelDate|date('d/m/Y') }}</td>
+                        <td>
+                            {{ reservation.passengerFirstName }} {{ reservation.passengerLastName }}
+                            <br>
+                            <small>{{ reservation.passengerPhone }}</small>
+                        </td>
+                        <td>{{ reservation.numPassengers }}</td>
+                        <td>
+                            {% if reservation.status == 'confirmed' %}
+                                <span class="badge success">CONFIRMÉ</span>
+                            {% elseif reservation.status == 'cancelled' %}
+                                <span class="badge danger">ANNULÉ</span>
+                            {% else %}
+                                <span class="badge warning">EN ATTENTE</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data={{ reservation.reservationId|url_encode }}" width="60" height="60" alt="QR">
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="openEditModal(
+                                    {{ reservation.id }}, 
+                                    '{{ reservation.reservationId }}',
+                                    '{{ reservation.passengerFirstName }}',
+                                    '{{ reservation.passengerLastName }}',
+                                    '{{ reservation.passengerPhone }}',
+                                    {{ reservation.numPassengers }},
+                                    '{{ reservation.travelDate|date('Y-m-d') }}'
+                                )" class="btn btn-sm btn-primary" title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                {% if reservation.status == 'confirmed' %}
+                                <button onclick="cancelReservation({{ reservation.id }})" class="btn btn-sm btn-danger" title="Annuler">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="10" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-inbox" style="font-size: 48px; color: #7f8c8d; margin-bottom: 15px; display: block;"></i>
+                            Aucun billet trouvé
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ACTIONS RAPIDES -->
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-bolt"></i> Actions Rapides</h3>
+    </div>
+    <div class="card-body">
+        <div style="display: flex; gap: 15px;">
+            <button onclick="window.print()" class="btn btn-warning">
+                <i class="fas fa-print"></i> Imprimer la liste
+            </button>
+            <button onclick="window.location.href='{{ path('admin_billets_export_excel', {search: search, date: date, trip_id: trip_id, status: status}) }}'" class="btn btn-success">
+                <i class="fas fa-file-excel"></i> Exporter Excel
+            </button>
+            <button onclick="window.location.href='{{ path('admin_billets_export_pdf', {search: search, date: date, trip_id: trip_id, status: status}) }}'" class="btn btn-danger">
+                <i class="fas fa-file-pdf"></i> Exporter PDF
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL MODIFICATION -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-edit"></i> Modifier la Réservation</h3>
+            <button onclick="closeEditModal()" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="editForm">
+                <input type="hidden" id="editReservationId">
+                
+                <div class="form-group">
+                    <label>N° Réservation</label>
+                    <input type="text" id="editResNumber" class="form-control" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label>Date de voyage</label>
+                    <input type="date" id="editTravelDate" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Prénom</label>
+                    <input type="text" id="editFirstName" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Nom</label>
+                    <input type="text" id="editLastName" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Téléphone</label>
+                    <input type="text" id="editPhone" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Nombre de places</label>
+                    <input type="number" id="editNumPassengers" class="form-control" min="1" max="10" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeEditModal()" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Annuler
+            </button>
+            <button onclick="saveEdit()" class="btn btn-success">
+                <i class="fas fa-save"></i> Enregistrer
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block javascripts %}
+<script>
+function openEditModal(id, resNumber, firstName, lastName, phone, numPassengers, travelDate) {
+    document.getElementById('editReservationId').value = id;
+    document.getElementById('editResNumber').value = resNumber;
+    document.getElementById('editFirstName').value = firstName;
+    document.getElementById('editLastName').value = lastName;
+    document.getElementById('editPhone').value = phone;
+    document.getElementById('editNumPassengers').value = numPassengers;
+    document.getElementById('editTravelDate').value = travelDate;
+    
+    document.getElementById('editModal').style.display = 'block';
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
+
+function saveEdit() {
+    const id = document.getElementById('editReservationId').value;
+    const data = {
+        first_name: document.getElementById('editFirstName').value,
+        last_name: document.getElementById('editLastName').value,
+        phone: document.getElementById('editPhone').value,
+        num_passengers: parseInt(document.getElementById('editNumPassengers').value),
+        travel_date: document.getElementById('editTravelDate').value
+    };
+    
+    fetch('/admin/billets/' + id + '/edit', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('✅ ' + result.message);
+            location.reload();
+        } else {
+            alert('❌ ' + result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('❌ Erreur lors de la modification');
+    });
+}
+
+function cancelReservation(id) {
+    if (!confirm('Voulez-vous vraiment annuler cette réservation ?')) {
+        return;
+    }
+    
+    fetch('/admin/billets/' + id + '/cancel', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('✅ ' + result.message);
+            location.reload();
+        } else {
+            alert('❌ ' + result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('❌ Erreur lors de l\'annulation');
+    });
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('editModal');
+    if (event.target == modal) {
+        closeEditModal();
+    }
+}
+</script>
+
+<style>
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 5% auto;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 5px 30px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    padding: 20px 25px;
+    background: linear-gradient(135deg, #14B53A, #0e8c2d);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 32px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn:hover {
+    opacity: 0.7;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.modal-footer {
+    padding: 20px 25px;
+    background: #f5f5f5;
+    border-radius: 0 0 10px 10px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #2c3e50;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #14B53A;
+}
+
+.form-control:read-only {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+</style>
+{% endblock %}

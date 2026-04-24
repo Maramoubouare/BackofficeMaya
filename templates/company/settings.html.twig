@@ -1,0 +1,211 @@
+{% extends 'base.html.twig' %}
+{% block title %}Paramètres - {{ app.user.companyName }}{% endblock %}
+
+{% block sidebar %}
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <a href="{{ path('company_dashboard') }}" class="sidebar-brand">
+            <div class="logo">🚌</div>
+            <div class="brand-text">
+                <span class="title">{{ app.user.companyName }}</span>
+                <span class="subtitle">Espace Compagnie</span>
+            </div>
+        </a>
+    </div>
+    <div class="sidebar-user">
+        <img src="https://ui-avatars.com/api/?name={{ app.user.companyName|url_encode }}&background=14B53A&color=fff" alt="">
+        <div class="user-info">
+            <div class="name">{{ app.user.firstName }} {{ app.user.lastName }}</div>
+            <div class="role">{{ app.user.companyName }}</div>
+        </div>
+    </div>
+    <ul class="sidebar-menu">
+        <li><a href="{{ path('company_dashboard') }}"><i class="fas fa-home"></i><span>Tableau de Bord</span></a></li>
+        <li><a href="{{ path('company_trips') }}"><i class="fas fa-bus"></i><span>Mes Trajets</span></a></li>
+        <li><a href="{{ path('company_reservations') }}"><i class="fas fa-ticket-alt"></i><span>Mes Réservations</span></a></li>
+        <li><a href="{{ path('company_statistics') }}"><i class="fas fa-chart-bar"></i><span>Statistiques</span></a></li>
+        <li><a href="{{ path('company_messages') }}"><i class="fas fa-envelope"></i><span>Messagerie</span></a></li>
+        <li><a href="{{ path('company_settings') }}" class="active"><i class="fas fa-cog"></i><span>Paramètres</span></a></li>
+        <li><a href="{{ path('company_profile') }}"><i class="fas fa-user-cog"></i><span>Mon Profil</span></a></li>
+    </ul>
+    <div class="sidebar-footer">
+        <a href="{{ path('app_logout') }}" class="btn-logout"><i class="fas fa-sign-out-alt"></i><span>Déconnexion</span></a>
+    </div>
+</aside>
+{% endblock %}
+
+{% block body %}
+<h1 class="page-title">Paramètres de l'Interface</h1>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-palette"></i> Personnalisation des Couleurs</h3>
+    </div>
+    <div class="card-body">
+        <form id="themeForm">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 25px;">
+
+                <div class="color-picker-group">
+                    <label><i class="fas fa-circle" style="color: var(--primary-color);"></i> Couleur Principale</label>
+                    <input type="color" name="primary_color" value="{{ settings.primary_color ?? '#14B53A' }}" class="color-input" onchange="updatePreview()">
+                    <small>Boutons, liens, accents</small>
+                </div>
+
+                <div class="color-picker-group">
+                    <label><i class="fas fa-circle" style="color: var(--secondary-color);"></i> Couleur Secondaire</label>
+                    <input type="color" name="secondary_color" value="{{ settings.secondary_color ?? '#0e8c2d' }}" class="color-input" onchange="updatePreview()">
+                    <small>Dégradés, hover</small>
+                </div>
+
+                <div class="color-picker-group">
+                    <label><i class="fas fa-bars"></i> Couleur Sidebar</label>
+                    <input type="color" name="sidebar_color" value="{{ settings.sidebar_color ?? '#1e2a38' }}" class="color-input" onchange="updatePreview()">
+                    <small>Menu latéral</small>
+                </div>
+
+                <div class="color-picker-group">
+                    <label><i class="fas fa-square"></i> Fond de Page</label>
+                    <input type="color" name="background_color" value="{{ settings.background_color ?? '#f5f7fa' }}" class="color-input" onchange="updatePreview()">
+                    <small>Arrière-plan général</small>
+                </div>
+
+                <div class="color-picker-group">
+                    <label><i class="fas fa-window-maximize"></i> Couleur Cards</label>
+                    <input type="color" name="card_color" value="{{ settings.card_color ?? '#ffffff' }}" class="color-input" onchange="updatePreview()">
+                    <small>Cartes et conteneurs</small>
+                </div>
+
+                <div class="color-picker-group">
+                    <label><i class="fas fa-font"></i> Couleur Texte</label>
+                    <input type="color" name="text_color" value="{{ settings.text_color ?? '#2c3e50' }}" class="color-input" onchange="updatePreview()">
+                    <small>Texte principal</small>
+                </div>
+            </div>
+
+            <hr style="margin: 30px 0;">
+
+            <div class="form-group">
+                <label><i class="fas fa-image"></i> Logo (URL)</label>
+                <input type="text" name="logo_url" value="{{ settings.logo_url ?? '' }}" class="form-control" placeholder="https://example.com/logo.png">
+                <small>Laissez vide pour utiliser le logo par défaut</small>
+            </div>
+
+            <div class="form-group">
+                <label><i class="fas fa-building"></i> Nom de l'Entreprise</label>
+                <input type="text" name="company_name" value="{{ settings.company_name ?? 'Maya' }}" class="form-control">
+            </div>
+
+            <div class="form-group">
+                <label><i class="fas fa-quote-left"></i> Slogan</label>
+                <input type="text" name="company_slogan" value="{{ settings.company_slogan ?? 'BilletExpress' }}" class="form-control">
+            </div>
+
+            <hr style="margin: 30px 0;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <button type="button" onclick="resetDefaults()" class="btn btn-secondary">
+                    <i class="fas fa-undo"></i> Réinitialiser par Défaut
+                </button>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" onclick="previewChanges()" class="btn btn-info">
+                        <i class="fas fa-eye"></i> Aperçu
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> Enregistrer
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 25px;">
+    <div class="card-header">
+        <h3><i class="fas fa-desktop"></i> Aperçu en Temps Réel</h3>
+    </div>
+    <div class="card-body">
+        <div id="preview" style="padding: 20px; border-radius: 8px; background: var(--background-color);">
+            <div style="background: var(--primary-color); color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <strong>Exemple de bouton principal</strong>
+            </div>
+            <div style="background: var(--card-color); padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <p style="color: var(--text-color); margin: 0;">
+                    Ceci est un exemple de carte avec du texte. Les couleurs s'appliqueront à toute l'interface.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+document.getElementById('themeForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+
+    fetch('{{ path('company_settings_save') }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(result => {
+        if (result.success) {
+            alert('Paramètres enregistrés ! La page va se recharger.');
+            location.reload();
+        } else {
+            alert(result.message);
+        }
+    });
+});
+
+function updatePreview() {
+    const form = document.getElementById('themeForm');
+    const formData = new FormData(form);
+    document.documentElement.style.setProperty('--primary-color', formData.get('primary_color'));
+    document.documentElement.style.setProperty('--secondary-color', formData.get('secondary_color'));
+    document.documentElement.style.setProperty('--sidebar-color', formData.get('sidebar_color'));
+    document.documentElement.style.setProperty('--background-color', formData.get('background_color'));
+    document.documentElement.style.setProperty('--card-color', formData.get('card_color'));
+    document.documentElement.style.setProperty('--text-color', formData.get('text_color'));
+}
+
+function previewChanges() {
+    updatePreview();
+    alert('Aperçu appliqué ! Naviguez dans les pages pour voir le résultat.\nPour revenir aux couleurs précédentes, rechargez la page sans enregistrer.');
+}
+
+function resetDefaults() {
+    if (confirm('Voulez-vous vraiment réinitialiser aux couleurs par défaut ?')) {
+        document.querySelector('[name="primary_color"]').value = '#14B53A';
+        document.querySelector('[name="secondary_color"]').value = '#0e8c2d';
+        document.querySelector('[name="sidebar_color"]').value = '#1e2a38';
+        document.querySelector('[name="background_color"]').value = '#f5f7fa';
+        document.querySelector('[name="card_color"]').value = '#ffffff';
+        document.querySelector('[name="text_color"]').value = '#2c3e50';
+        document.querySelector('[name="logo_url"]').value = '';
+        document.querySelector('[name="company_name"]').value = 'Maya';
+        document.querySelector('[name="company_slogan"]').value = 'BilletExpress';
+        updatePreview();
+    }
+}
+
+window.addEventListener('DOMContentLoaded', updatePreview);
+</script>
+
+<style>
+.color-picker-group { padding: 20px; background: #f8f9fa; border-radius: 10px; border: 2px solid #e0e0e0; transition: all 0.3s; }
+.color-picker-group:hover { border-color: var(--primary-color); box-shadow: 0 4px 15px rgba(20, 181, 58, 0.1); }
+.color-picker-group label { display: block; font-weight: 600; margin-bottom: 10px; color: #2c3e50; font-size: 16px; }
+.color-picker-group label i { margin-right: 8px; }
+.color-input { width: 100%; height: 60px; border: 3px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s; }
+.color-input:hover { border-color: var(--primary-color); transform: scale(1.02); }
+.color-picker-group small { display: block; color: #7f8c8d; margin-top: 8px; font-size: 13px; }
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; font-weight: 600; margin-bottom: 8px; color: #2c3e50; }
+.form-control { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; transition: border-color 0.3s; box-sizing: border-box; }
+.form-control:focus { outline: none; border-color: var(--primary-color); }
+</style>
+{% endblock %}

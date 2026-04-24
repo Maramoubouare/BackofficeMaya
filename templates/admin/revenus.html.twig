@@ -1,0 +1,86 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Revenus - Maya{% endblock %}
+
+{% block body %}
+<h1 class="page-title">Revenus & Commissions</h1>
+
+<form method="get">
+    <div class="filters-bar">
+        <div class="filters-row">
+            <div class="filter-group">
+                <label>Début :</label>
+                <input type="date" name="start_date" value="{{ start_date }}">
+            </div>
+            <div class="filter-group">
+                <label>Fin :</label>
+                <input type="date" name="end_date" value="{{ end_date }}">
+            </div>
+            <button type="submit" class="btn btn-primary" style="align-self: flex-end;">Appliquer</button>
+        </div>
+    </div>
+</form>
+
+<div class="stats-grid">
+    <div class="stat-card blue">
+        <div class="icon"><i class="fas fa-money-bill-wave"></i></div>
+        <div class="content">
+            <div class="number">{{ (total_revenue / 1000000)|number_format(2) }}M</div>
+            <div class="label">Revenus</div>
+        </div>
+    </div>
+    <div class="stat-card orange">
+        <div class="icon"><i class="fas fa-percentage"></i></div>
+        <div class="content">
+            <div class="number">{{ (total_commissions / 1000)|number_format(0) }}K</div>
+            <div class="label">Commissions</div>
+        </div>
+    </div>
+    <div class="stat-card green">
+        <div class="icon"><i class="fas fa-building"></i></div>
+        <div class="content">
+            <div class="number">{{ (company_revenue / 1000000)|number_format(2) }}M</div>
+            <div class="label">Compagnies</div>
+        </div>
+    </div>
+    <div class="stat-card red">
+        <div class="icon"><i class="fas fa-file-invoice"></i></div>
+        <div class="content">
+            <div class="number">{{ transactions|length }}</div>
+            <div class="label">Transactions</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-list"></i> Transactions</h3>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Date</th>
+                    <th>Compagnie</th>
+                    <th>Total</th>
+                    <th>Commission</th>
+                    <th>Statut</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in transactions %}
+                <tr>
+                    <td>#{{ transaction.id }}</td>
+                    <td>{{ transaction.createdAt|date('d/m/Y') }}</td>
+                    <td>{{ transaction.company.companyName }}</td>
+                    <td><strong>{{ transaction.totalAmount|number_format(0, '', ' ') }} F</strong></td>
+                    <td><span class="badge warning">{{ transaction.commissionAmount|number_format(0, '', ' ') }} F</span></td>
+                    <td><span class="badge success">Confirmé</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

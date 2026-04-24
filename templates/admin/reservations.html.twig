@@ -1,0 +1,201 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Réservations - MAYA{% endblock %}
+
+{% block body %}
+<nav class="main-header navbar navbar-expand navbar-white navbar-light">
+    <ul class="navbar-nav">
+        <li class="nav-item">
+            <a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a>
+        </li>
+    </ul>
+    <ul class="navbar-nav ml-auto">
+        <li class="nav-item">
+            <a class="nav-link" href="{{ path('app_logout') }}">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </a>
+        </li>
+    </ul>
+</nav>
+
+<aside class="main-sidebar sidebar-dark-primary elevation-4">
+    <a href="{{ path('admin_dashboard') }}" class="brand-link">
+        <i class="fas fa-bus brand-image"></i>
+        <span class="brand-text font-weight-light">MAYA ADMIN</span>
+    </a>
+    <div class="sidebar">
+        <nav class="mt-2">
+            <ul class="nav nav-pills nav-sidebar flex-column">
+                <li class="nav-item">
+                    <a href="{{ path('admin_dashboard') }}" class="nav-link">
+                        <i class="nav-icon fas fa-tachometer-alt"></i>
+                        <p>Dashboard</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ path('admin_companies') }}" class="nav-link">
+                        <i class="nav-icon fas fa-building"></i>
+                        <p>Compagnies</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ path('admin_reservations') }}" class="nav-link active">
+                        <i class="nav-icon fas fa-ticket-alt"></i>
+                        <p>Réservations</p>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</aside>
+
+<div class="content-wrapper">
+    <div class="content-header">
+        <div class="container-fluid">
+            <h1 class="m-0"><i class="fas fa-ticket-alt"></i> Toutes les Réservations</h1>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <!-- Statistiques -->
+            <div class="row">
+                <div class="col-lg-3">
+                    <div class="small-box bg-success">
+                        <div class="inner">
+                            <h3>{{ reservations|filter(r => r.status == 'confirmed')|length }}</h3>
+                            <p>Confirmées</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-check-circle"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <div class="small-box bg-warning">
+                        <div class="inner">
+                            <h3>{{ reservations|filter(r => r.status == 'pending')|length }}</h3>
+                            <p>En attente</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-clock"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <div class="small-box bg-danger">
+                        <div class="inner">
+                            <h3>{{ reservations|filter(r => r.status == 'cancelled')|length }}</h3>
+                            <p>Annulées</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-times-circle"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <div class="small-box bg-info">
+                        <div class="inner">
+                            <h3>{{ reservations|length }}</h3>
+                            <p>Total</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-list"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recherche -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Recherche</h3>
+                </div>
+                <div class="card-body">
+                    <form method="get">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <input type="text" name="search" class="form-control" placeholder="Référence, Nom, Téléphone..." value="{{ search }}">
+                            </div>
+                            <div class="col-md-2">
+                                <select name="status" class="form-control">
+                                    <option value="">Tous</option>
+                                    <option value="confirmed">Confirmé</option>
+                                    <option value="pending">En attente</option>
+                                    <option value="cancelled">Annulé</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Rechercher
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="card">
+                <div class="card-body table-responsive p-0">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Référence</th>
+                                <th>Passager</th>
+                                <th>Trajet</th>
+                                <th>Compagnie</th>
+                                <th>Prix</th>
+                                <th>Statut</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reservation in reservations %}
+                            <tr>
+                                <td><strong>{{ reservation.reservationId }}</strong></td>
+                                <td>{{ reservation.passengerFullName }}<br><small>{{ reservation.passengerPhone }}</small></td>
+                                <td>{{ reservation.trip.departureCity }} → {{ reservation.trip.arrivalCity }}</td>
+                                <td>{{ reservation.company.companyName }}</td>
+                                <td>{{ reservation.totalPrice|number_format(0, ',', ' ') }} FCFA</td>
+                                <td>
+                                    {% if reservation.status == 'confirmed' %}
+                                        <span class="badge badge-success">Confirmé</span>
+                                    {% elseif reservation.status == 'pending' %}
+                                        <span class="badge badge-warning">En attente</span>
+                                    {% else %}
+                                        <span class="badge badge-danger">Annulé</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+    <div class="btn-group">
+        <button type="button" class="btn btn-sm btn-info" title="Voir détails">
+            <i class="fas fa-eye"></i>
+        </button>
+        {% if reservation.pdfUrl %}
+            <a href="{{ reservation.pdfUrl }}" target="_blank" class="btn btn-sm btn-success" title="Télécharger PDF">
+                <i class="fas fa-file-pdf"></i>
+            </a>
+        {% endif %}
+        
+        {# NOUVEAU : Bouton Annuler #}
+        {% if reservation.status != 'cancelled' %}
+            <form method="post" action="{{ path('admin_reservation_cancel', {id: reservation.id}) }}" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir annuler cette réservation ? Les places seront libérées.');">
+                <button type="submit" class="btn btn-sm btn-danger" title="Annuler">
+                    <i class="fas fa-times"></i>
+                </button>
+            </form>
+        {% endif %}
+    </div>
+</td>
+                                <td>{{ reservation.createdAt|date('d/m/Y H:i') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center">Aucune réservation</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<footer class="main-footer">
+    <strong>Copyright &copy; 2025 MAYA Transport.</strong>
+</footer>
+{% endblock %}

@@ -1,0 +1,332 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Tableau de Bord - Maya{% endblock %}
+
+{% block body %}
+<h1 class="page-title">Tableau de Bord</h1>
+
+<!-- STATS CARDS -->
+<div class="stats-grid">
+    <div class="stat-card blue">
+        <div class="icon"><i class="fas fa-ticket-alt"></i></div>
+        <div class="content">
+            <div class="number">{{ stats.reservations_today }}</div>
+            <div class="label">Réservations du Jour</div>
+        </div>
+    </div>
+
+    <div class="stat-card orange">
+        <div class="icon"><i class="fas fa-chair"></i></div>
+        <div class="content">
+            <div class="number">{{ stats.seats_available }}</div>
+            <div class="label">Places Disponibles</div>
+        </div>
+    </div>
+
+    <div class="stat-card green">
+        <div class="icon"><i class="fas fa-check-circle"></i></div>
+        <div class="content">
+            <div class="number">{{ stats.tickets_completed }}</div>
+            <div class="label">Billets Complétés</div>
+        </div>
+    </div>
+
+    <div class="stat-card red">
+        <div class="icon"><i class="fas fa-bus"></i></div>
+        <div class="content">
+            <div class="number">{{ stats.active_departures }}</div>
+            <div class="label">Départs Actifs</div>
+        </div>
+    </div>
+</div>
+
+<!-- LAYOUT 2 COLONNES -->
+<div class="grid-2cols">
+    <!-- COLONNE GAUCHE -->
+    <div>
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-bus"></i> Départs Aujourd'hui</h3>
+                <button class="btn btn-warning btn-sm" onclick="window.location.href='{{ path('admin_dashboard', {date: today_date}) }}'">
+                    <i class="fas fa-sync"></i> Actualiser
+                </button>
+            </div>
+            
+            <div class="card-body" style="padding-top: 0;">
+                <!-- TABS -->
+                <div class="tabs">
+                    <button class="tab active" data-filter="all">Tous</button>
+                    <button class="tab" data-filter="actif">Actifs</button>
+                    <button class="tab" data-filter="complet">Complet</button>
+                </div>
+
+                <!-- FILTRES -->
+                <form method="get" action="{{ path('admin_dashboard') }}">
+                    <div class="filters-row" style="margin-bottom: 20px;">
+                        <div class="filter-group">
+                            <label>Date</label>
+                            <input type="date" name="date" value="{{ selected_date }}">
+                        </div>
+                        <div class="filter-group">
+                            <label>Trajet</label>
+                            <select name="trip_id">
+                                <option value="">Tous les trajets</option>
+                                {% for ts in trip_stats_today %}
+                                    <option value="{{ ts.trip.id }}" {% if filter_trip_id == ts.trip.id ~ '' %}selected{% endif %}>
+                                        {{ ts.label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Ville</label>
+                            <select name="city">
+                                <option value="">Toutes</option>
+                                {% for city in ['Bamako','Ségou','Sikasso','Kayes','Mopti','Koutiala','Gao','San'] %}
+                                    <option value="{{ city }}" {% if filter_city == city %}selected{% endif %}>{{ city }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Recherche</label>
+                            <input type="text" name="search" value="{{ filter_search }}" placeholder="🔍 Rechercher...">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="align-self: flex-end;">Appliquer</button>
+                    </div>
+                </form>
+                <!-- TABLE -->
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Compagnie</th>
+                                <th>Trajet</th>
+                                <th>Horaire</th>
+                                <th>Capacité</th>
+                                <th>Restantes</th>
+                                <th>Statut</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for departure in departures %}
+                            <tr data-status="{{ departure.status }}">
+                                <td><strong>{{ departure.departureDate|date('d/m') }}</strong></td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <img src="https://ui-avatars.com/api/?name={{ departure.company.companyName|url_encode }}&background=14B53A&color=fff" style="width: 28px; height: 28px; border-radius: 50%;">
+                                        <strong>{{ departure.company.companyName }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <strong>{{ departure.departureCity }}</strong>
+                                        <i class="fas fa-arrow-right" style="color: #14B53A; font-size: 12px;"></i>
+                                        <strong>{{ departure.arrivalCity }}</strong>
+                                    </div>
+                                </td>
+                                <td>{{ departure.departureTime|date('H:i') }} - {{ departure.arrivalTime|date('H:i') }}</td>
+                                <td><strong>{{ departure.seatsTotal }}</strong></td>
+                                <td>
+                                    <div>
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                            <strong style="color: #14B53A; font-size: 16px;">{{ departure.seatsAvailable }}</strong>
+                                        </div>
+                                        {% set percent = departure.seatsTotal > 0 ? (departure.seatsSold / departure.seatsTotal * 100)|round : 0 %}
+                                        <div class="progress">
+                                            <div class="progress-bar {% if percent > 80 %}danger{% elseif percent > 50 %}warning{% else %}success{% endif %}" style="width: {{ percent }}%"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if departure.status == 'actif' %}
+                                        <span class="badge success"><i class="fas fa-check"></i> Actif</span>
+                                    {% else %}
+                                        <span class="badge danger"><i class="fas fa-times"></i> Complet</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ path('admin_trip_edit', {id: departure.trip.id}) }}" 
+                                       class="btn btn-sm btn-primary" 
+                                       title="Modifier">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                                    <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
+                                    Aucun départ pour cette date
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATS GLOBALES -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-chart-bar"></i> Statistiques Globales</h3>
+            </div>
+            <div class="card-body">
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; text-align: center; padding: 10px 0;">
+                    <div>
+                        <div style="font-size: 24px; font-weight: 700; color: #3498db; margin-bottom: 8px;">{{ global_stats.total_departures }}</div>
+                        <div style="font-size: 12px; color: #7f8c8d; font-weight: 500;">Total Départs</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 24px; font-weight: 700; color: #14B53A; margin-bottom: 8px;">{{ global_stats.total_reservations }}</div>
+                        <div style="font-size: 12px; color: #7f8c8d; font-weight: 500;">Total Réservations</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 24px; font-weight: 700; color: #f39c12; margin-bottom: 8px;">{{ global_stats.total_seats_sold }}</div>
+                        <div style="font-size: 12px; color: #7f8c8d; font-weight: 500;">Places Vendues</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 24px; font-weight: 700; color: #e74c3c; margin-bottom: 8px;">{{ global_stats.average_rate }}%</div>
+                        <div style="font-size: 12px; color: #7f8c8d; font-weight: 500;">Taux Moyen</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- COLONNE DROITE -->
+    <div>
+        <!-- WIDGET ORANGE -->
+        <div style="background: linear-gradient(135deg, #f39c12, #e67e22); border-radius: 10px; padding: 22px; color: white; margin-bottom: 20px; box-shadow: 0 5px 20px rgba(243, 156, 18, 0.3);">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 18px;">
+                <div style="font-size: 42px;"><i class="fas fa-calendar-day"></i></div>
+                <div>
+                    <h3 style="font-size: 17px; margin-bottom: 6px; font-weight: 700;">Départs Quotidiens</h3>
+                    <p style="font-size: 12px; opacity: 0.95; margin: 0;">{{ stats.active_departures_today }} départs actifs sur {{ stats.total_routes }} trajets</p>
+                </div>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.18); padding: 22px; border-radius: 10px; text-align: center; margin-bottom: 16px;">
+                <div style="font-size: 52px; font-weight: 800; margin-bottom: 6px; line-height: 1;">{{ stats.seats_available }}</div>
+                <div style="font-size: 13px; opacity: 0.95; font-weight: 500;">disponibles en temps réel</div>
+            </div>
+
+            <a href="{{ path('admin_billets') }}" class="btn" style="width: 100%; background: white; color: #f39c12; justify-content: center; font-weight: 700; padding: 12px; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-eye"></i>
+                Voir les Départs & Réservations
+            </a>
+        </div>
+
+        <!-- FILTRE PAR TRAJET -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-header">
+                <h3><i class="fas fa-route"></i> Stats Trajets du Jour</h3>
+            </div>
+            <div class="card-body" style="padding: 15px;">
+                <form method="get" action="{{ path('admin_dashboard') }}" id="tripFilterForm">
+                    <input type="hidden" name="date" value="{{ selected_date }}">
+                    {% if filter_city %}<input type="hidden" name="city" value="{{ filter_city }}">{% endif %}
+                    {% if filter_search %}<input type="hidden" name="search" value="{{ filter_search }}">{% endif %}
+                    <div class="filter-group" style="margin-bottom: 12px;">
+                        <label style="font-weight:600;font-size:13px;margin-bottom:6px;display:block;">Filtrer par trajet :</label>
+                        <select name="trip_id" onchange="this.form.submit()" style="width:100%;">
+                            <option value="">— Tous les trajets —</option>
+                            {% for ts in trip_stats_today %}
+                                <option value="{{ ts.trip.id }}" {% if filter_trip_id == ts.trip.id ~ '' %}selected{% endif %}>
+                                    {{ ts.label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+
+                {% if selected_trip_stats %}
+                    {# Détails du trajet sélectionné #}
+                    <div style="background:#f8f9fa;border-radius:10px;padding:15px;margin-bottom:12px;">
+                        <div style="font-weight:700;color:#2c3e50;margin-bottom:12px;font-size:14px;">
+                            <i class="fas fa-bus" style="color:#14B53A;"></i>
+                            {{ selected_trip_stats.trip.departureCity }} → {{ selected_trip_stats.trip.arrivalCity }}
+                            <small style="color:#7f8c8d;font-weight:500;"> — {{ selected_trip_stats.trip.departureTime|date('H:i') }}</small>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                            <div style="background:white;border-radius:8px;padding:12px;text-align:center;border-left:3px solid #3498db;">
+                                <div style="font-size:22px;font-weight:800;color:#3498db;">{{ selected_trip_stats.reservations }}</div>
+                                <div style="font-size:11px;color:#7f8c8d;font-weight:500;">Réservations</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:12px;text-align:center;border-left:3px solid #14B53A;">
+                                <div style="font-size:22px;font-weight:800;color:#14B53A;">{{ selected_trip_stats.passengers }}</div>
+                                <div style="font-size:11px;color:#7f8c8d;font-weight:500;">Passagers</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:12px;text-align:center;border-left:3px solid #e67e22;">
+                                <div style="font-size:22px;font-weight:800;color:#e67e22;">{{ selected_trip_stats.seats_sold }} / {{ selected_trip_stats.seats_total }}</div>
+                                <div style="font-size:11px;color:#7f8c8d;font-weight:500;">Places vendues</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:12px;text-align:center;border-left:3px solid #9b59b6;">
+                                <div style="font-size:22px;font-weight:800;color:#9b59b6;">{{ selected_trip_stats.revenue|number_format(0,'','\u00a0') }} F</div>
+                                <div style="font-size:11px;color:#7f8c8d;font-weight:500;">Revenus</div>
+                            </div>
+                        </div>
+                        <div style="margin-top:12px;">
+                            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+                                <span style="font-weight:600;">Taux de remplissage</span>
+                                <span style="font-weight:700;color:{% if selected_trip_stats.fill_rate > 80 %}#e74c3c{% elseif selected_trip_stats.fill_rate > 50 %}#f39c12{% else %}#14B53A{% endif %};">{{ selected_trip_stats.fill_rate }}%</span>
+                            </div>
+                            <div class="progress" style="height:10px;">
+                                <div class="progress-bar {% if selected_trip_stats.fill_rate > 80 %}danger{% elseif selected_trip_stats.fill_rate > 50 %}warning{% else %}success{% endif %}" style="width:{{ selected_trip_stats.fill_rate }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    {# Vue globale : tous les trajets du jour #}
+                    {% for ts in trip_stats_today %}
+                    <div style="margin-bottom:12px;padding-bottom:12px;{% if not loop.last %}border-bottom:1px solid #f1f3f5;{% endif %}">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+                            <div>
+                                <span style="font-weight:600;font-size:13px;">{{ ts.trip.departureCity }} → {{ ts.trip.arrivalCity }}</span>
+                                <small style="color:#7f8c8d;margin-left:6px;">{{ ts.trip.departureTime|date('H:i') }}</small>
+                            </div>
+                            <span style="font-weight:700;font-size:13px;color:#14B53A;">{{ ts.seats_sold }}/{{ ts.seats_total }}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:11px;color:#7f8c8d;margin-bottom:5px;">
+                            <span>{{ ts.reservations }} rés. · {{ ts.passengers }} pass.</span>
+                            <span style="color:#9b59b6;font-weight:600;">{{ ts.revenue|number_format(0,'','') }} F</span>
+                        </div>
+                        {% set pct = ts.fill_rate %}
+                        <div class="progress" style="height:6px;">
+                            <div class="progress-bar {% if pct > 80 %}danger{% elseif pct > 50 %}warning{% else %}success{% endif %}" style="width:{{ pct }}%"></div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p style="color:#999;text-align:center;padding:20px;">Aucun trajet actif.</p>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block javascripts %}
+<script>
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        
+        const filter = this.getAttribute('data-filter');
+        const rows = document.querySelectorAll('tbody tr[data-status]');
+        
+        rows.forEach(row => {
+            const status = row.getAttribute('data-status');
+            if (filter === 'all') {
+                row.style.display = '';
+            } else {
+                row.style.display = status === filter ? '' : 'none';
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
