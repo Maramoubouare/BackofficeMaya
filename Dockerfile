@@ -10,7 +10,11 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 COPY . .
 
-RUN composer install --no-dev --optimize-autoloader
+ENV APP_ENV=prod
+ENV APP_SECRET=temporarysecretforbuilding123456
+ENV DATABASE_URL="mysql://root:root@localhost:3306/maya_db?serverVersion=8.0"
+
+RUN composer install --no-dev --optimize-autoloader --no-scripts
 
 RUN php bin/console cache:warmup --env=prod || true
 
