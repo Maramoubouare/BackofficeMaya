@@ -16,7 +16,6 @@ ENV DATABASE_URL="mysql://root:root@localhost:3306/maya_db?serverVersion=8.0"
 
 RUN composer install --no-dev --optimize-autoloader --no-scripts
 
-RUN mkdir -p var/cache var/log && chmod -R 777 var/
+RUN mkdir -p var/cache/prod var/log && chmod -R 777 var/
 
-EXPOSE 8080
-CMD php bin/console cache:clear --env=prod --no-warmup 2>/dev/null; php -S 0.0.0.0:$PORT -t public/
+CMD php bin/console cache:clear --env=prod 2>&1 || true && php -S 0.0.0.0:${PORT:-8080} -t public/
