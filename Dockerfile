@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-install pdo pdo_mysql mbstring zip intl opcache \
     && apt-get clean
 
-RUN a2enmod rewrite
+RUN a2enmod rewrite && a2dismod mpm_event && a2enmod mpm_prefork
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
