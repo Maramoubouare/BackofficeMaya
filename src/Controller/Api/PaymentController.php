@@ -562,6 +562,80 @@ class PaymentController extends AbstractController
         ]);
     }
 
+    /**
+     * POST /api/public/payment/refund
+     * Annuler une réservation et rembourser via PayDunya.
+     *
+     * Corps JSON : { "reservation_id": "RES..." }
+     */
+    #[Route('/refund', name: 'refund', methods: ['POST'])]
+    public function refund(
+        Request $request,
+        ReservationRepository $reservationRepo,
+        TransactionRepository $transactionRepo,
+        TripAvailabilityRepository $availabilityRepo,
+        EntityManagerInterface $em,
+        PayDunyaService $payDunya
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+
+        if (empty($data['reservation_id'])) {
+            return $this->json(['success' => false, 'message' => 'reservation_id est requis'], 400);
+        }
+
+        $reservation = $reservationRepo->findOneBy(['reservationId' => $data['reservation_id']]);
+        if (!$reservation) {
+            return $this->json(['success' => false, 'message' => 'Réservation non trouvée'], 404);
+        }
+
+        if ($reservation->getStatus() === 'cancelled') {
+            return $this->json(['success' => false, 'message' => 'Cette réservation est déjà annulée'], 400);
+        }
+
+        // Trouver la transaction liée
+        $transaction = $transactionRepo->findOneBy(
+            ['reservation' => $reservation, 'status' => 'COMPLETED'],
+            ['createdAt' => 'DESC']
+        );
+
+        $refundResult = ['success' => false, 'response_text' => 'Aucune transaction trouvée'];
+
+        // Tenter le remboursement PayDunya si token disponible
+        if ($transaction && $transaction->getPaydunyaToken()) {
+            $refundResult = $payDunya->refund($transaction->getPaydunyaToken());
+            if ($refundResult['success']) {
+                $transaction->setStatus('REFUNDED');
+                $transaction->setMetadata(array_merge(
+                    $transaction->getMetadata() ?? [],
+                    ['refunded_at' => date('Y-m-d H:i:s')]
+                ));
+            }
+        }
+
+        // Annuler la réservation et libérer les places
+        $reservation->setStatus('cancelled');
+
+        $travelDate   = $reservation->getTravelDate();
+        $trip         = $reservation->getTrip();
+        $availability = $availabilityRepo->findOneBy(['trip' => $trip, 'travelDate' => $travelDate]);
+        if ($availability) {
+            $num = $reservation->getNumPassengers();
+            $availability->setReservedSeats(max(0, $availability->getReservedSeats() - $num));
+            $availability->setAvailableSeats($availability->getAvailableSeats() + $num);
+        }
+
+        $em->flush();
+
+        return $this->json([
+            'success'        => true,
+            'message'        => $refundResult['success']
+                ? 'Réservation annulée et remboursement initié via PayDunya.'
+                : 'Réservation annulée. Le remboursement sera traité manuellement sous 24-48h.',
+            'refund_via_api' => $refundResult['success'],
+            'reservation_id' => $reservation->getReservationId(),
+        ]);
+    }
+
     private function buildCheckoutUrl(?string $token): ?string
     {
         if (!$token) {

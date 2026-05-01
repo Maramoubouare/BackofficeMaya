@@ -224,6 +224,41 @@ class PayDunyaService
     }
 
     /**
+     * Demander un remboursement PayDunya
+     *
+     * @param string $token Token de la facture PayDunya
+     * @return array
+     */
+    public function refund(string $token): array
+    {
+        try {
+            $response = $this->httpClient->request('POST', $this->baseUrl . '/checkout-invoice/refund/' . $token, [
+                'headers' => [
+                    'Content-Type'         => 'application/json',
+                    'PAYDUNYA-MASTER-KEY'  => $this->masterKey,
+                    'PAYDUNYA-PRIVATE-KEY' => $this->privateKey,
+                    'PAYDUNYA-TOKEN'       => $this->token,
+                ],
+            ]);
+
+            $rawContent = $response->getContent(false);
+            $result     = json_decode($rawContent, true);
+
+            if (isset($result['response_code']) && $result['response_code'] === '00') {
+                return ['success' => true, 'response_text' => $result['response_text'] ?? 'Remboursement effectué'];
+            }
+
+            return [
+                'success'       => false,
+                'response_code' => $result['response_code'] ?? 'ERROR',
+                'response_text' => $result['response_text'] ?? 'Erreur remboursement PayDunya',
+            ];
+        } catch (\Exception $e) {
+            return ['success' => false, 'response_text' => $e->getMessage()];
+        }
+    }
+
+    /**
      * Vérifier la signature d'un callback IPN
      * 
      * @param array $data
