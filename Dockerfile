@@ -14,7 +14,7 @@ ENV APP_ENV=prod
 ENV APP_SECRET=temporarysecretforbuilding123456
 ENV DATABASE_URL="mysql://root:root@localhost:3306/maya_db?serverVersion=8.0"
 
-RUN composer install --no-dev --optimize-autoloader --no-scripts
+RUN composer install --no-dev --optimize-autoloader
 RUN mkdir -p var/cache var/log && chmod -R 777 var/
 
 EXPOSE 8080
