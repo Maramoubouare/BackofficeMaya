@@ -88,58 +88,45 @@ class PublicApiController extends AbstractController
             ], 400);
         }
         
+        // Indexer les records de disponibilité par trip_id
         $availabilities = $availabilityRepo->findBy(['travelDate' => $date]);
-        
-        $data = [];
-        
-        if (empty($availabilities)) {
-            // ✅ FILTRER : compagnies actives uniquement
-            $qb = $tripRepo->createQueryBuilder('t')
-                ->leftJoin('t.company', 'c')
-                ->where('t.isActive = true')
-                ->andWhere('c.isActive = true')  // ✅ AJOUTÉ
-                ->orderBy('t.departureTime', 'ASC');
-            
-            $trips = $qb->getQuery()->getResult();
-            
-            foreach ($trips as $trip) {
-                $data[] = [
-                    'trip_id' => $trip->getId(),
-                    'company_name' => $trip->getCompany()->getCompanyName(),
-                    'departure_city' => $trip->getDepartureCity(),
-                    'arrival_city' => $trip->getArrivalCity(),
-                    'departure_time' => $trip->getDepartureTime()->format('H:i'),
-                    'arrival_time' => $trip->getArrivalTime()->format('H:i'),
-                    'travel_date' => $date->format('Y-m-d'),
-                    'price' => $trip->getPrice(),
-                    'total_seats' => $trip->getTotalSeats(),
-                    'available_seats' => $trip->getAvailableSeats(),
-                    'reserved_seats' => 0,
-                ];
-            }
-        } else {
-            foreach ($availabilities as $availability) {
-                $trip = $availability->getTrip();
+        $availMap = [];
+        foreach ($availabilities as $avail) {
+            $availMap[$avail->getTrip()->getId()] = $avail;
+        }
 
-                if (!$trip->isActive() || !$trip->getCompany()->isActive()) {
-                    continue;
-                }
-                
-                $data[] = [
-                    'availability_id' => $availability->getId(),
-                    'trip_id' => $trip->getId(),
-                    'company_name' => $trip->getCompany()->getCompanyName(),
-                    'departure_city' => $trip->getDepartureCity(),
-                    'arrival_city' => $trip->getArrivalCity(),
-                    'departure_time' => $trip->getDepartureTime()->format('H:i'),
-                    'arrival_time' => $trip->getArrivalTime()->format('H:i'),
-                    'travel_date' => $availability->getTravelDate()->format('Y-m-d'),
-                    'price' => $trip->getPrice(),
-                    'total_seats' => $availability->getTotalSeats(),
-                    'available_seats' => $availability->getAvailableSeats(),
-                    'reserved_seats' => $availability->getReservedSeats(),
-                ];
-            }
+        // Toujours partir de TOUS les trajets actifs
+        $trips = $tripRepo->createQueryBuilder('t')
+            ->leftJoin('t.company', 'c')
+            ->where('t.isActive = true')
+            ->andWhere('c.isActive = true')
+            ->orderBy('t.departureTime', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        $data = [];
+        foreach ($trips as $trip) {
+            $avail = $availMap[$trip->getId()] ?? null;
+
+            // Si un record existe, utiliser ses places ; sinon utiliser les places par défaut du trajet
+            $availableSeats = $avail ? $avail->getAvailableSeats() : $trip->getTotalSeats();
+            $reservedSeats  = $avail ? $avail->getReservedSeats()  : 0;
+            $totalSeats     = $avail ? $avail->getTotalSeats()      : $trip->getTotalSeats();
+
+            $data[] = [
+                'availability_id' => $avail ? $avail->getId() : null,
+                'trip_id'         => $trip->getId(),
+                'company_name'    => $trip->getCompany()->getCompanyName(),
+                'departure_city'  => $trip->getDepartureCity(),
+                'arrival_city'    => $trip->getArrivalCity(),
+                'departure_time'  => $trip->getDepartureTime()->format('H:i'),
+                'arrival_time'    => $trip->getArrivalTime()->format('H:i'),
+                'travel_date'     => $date->format('Y-m-d'),
+                'price'           => $trip->getPrice(),
+                'total_seats'     => $totalSeats,
+                'available_seats' => $availableSeats,
+                'reserved_seats'  => $reservedSeats,
+            ];
         }
         
         return $this->json([
